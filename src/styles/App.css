@@ -1,0 +1,38 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.App {
+  padding: 2rem;
+}
+
+.App-header {
+  padding: 2rem 0;
+}
+
+.App-header h1 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.counter {
+  margin-top: 2rem;
+}
+
+.counter button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.counter button:hover {
+  background-color: #2980b9;
+}
