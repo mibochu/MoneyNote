@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -9,42 +9,26 @@ import {
   ListItemSecondaryAction,
   IconButton,
   Chip,
-  Divider
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { Fab } from '../components/ui/Button';
+import { ExpenseFormContainer } from '../components/forms/ExpenseForm';
+import { useExpenses } from '../hooks/useExpenses';
 
 const Expenses: React.FC = () => {
-  const mockExpenses = [
-    {
-      id: '1',
-      date: '2025-08-03',
-      description: '마트 장보기',
-      amount: 45000,
-      category: '식비',
-      paymentMethod: '신용카드'
-    },
-    {
-      id: '2',
-      date: '2025-08-02',
-      description: '지하철 교통비',
-      amount: 1370,
-      category: '교통비',
-      paymentMethod: '교통카드'
-    },
-    {
-      id: '3',
-      date: '2025-08-01',
-      description: '점심 식사',
-      amount: 12000,
-      category: '식비',
-      paymentMethod: '현금'
-    }
-  ];
+  const { state, deleteExpense } = useExpenses();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  const expenses = state.expenses || [];
 
   return (
     <Box>
@@ -61,10 +45,10 @@ const Expenses: React.FC = () => {
             이번 달 지출 현황
           </Typography>
           <Typography variant="h4" color="error" gutterBottom>
-            ₩{mockExpenses.reduce((sum, expense) => sum + expense.amount, 0).toLocaleString()}
+            ₩{expenses.reduce((sum, expense) => sum + expense.amount, 0).toLocaleString()}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            총 {mockExpenses.length}건의 거래
+            총 {expenses.length}건의 거래
           </Typography>
         </Box>
       </Paper>
@@ -78,7 +62,7 @@ const Expenses: React.FC = () => {
         <Divider />
         
         <List>
-          {mockExpenses.map((expense, index) => (
+          {expenses.map((expense, index) => (
             <React.Fragment key={expense.id}>
               <ListItem>
                 <ListItemText
@@ -86,7 +70,7 @@ const Expenses: React.FC = () => {
                   secondary={
                     <Box sx={{ mt: 1 }}>
                       <Typography variant="caption" color="text.secondary">
-                        {expense.date} • {expense.paymentMethod}
+                        {new Date(expense.date).toLocaleDateString('ko-KR')} • {expense.paymentMethod}
                       </Typography>
                       <Box sx={{ mt: 0.5 }}>
                         <Chip
@@ -94,6 +78,15 @@ const Expenses: React.FC = () => {
                           size="small"
                           variant="outlined"
                         />
+                        {expense.tags.map((tag, tagIndex) => (
+                          <Chip
+                            key={tagIndex}
+                            label={tag}
+                            size="small"
+                            variant="outlined"
+                            sx={{ ml: 0.5 }}
+                          />
+                        ))}
                       </Box>
                     </Box>
                   }
@@ -106,18 +99,21 @@ const Expenses: React.FC = () => {
                     <IconButton size="small">
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small">
+                    <IconButton 
+                      size="small" 
+                      onClick={() => deleteExpense(expense.id)}
+                    >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
                 </ListItemSecondaryAction>
               </ListItem>
-              {index < mockExpenses.length - 1 && <Divider />}
+              {index < expenses.length - 1 && <Divider />}
             </React.Fragment>
           ))}
         </List>
 
-        {mockExpenses.length === 0 && (
+        {expenses.length === 0 && (
           <Box sx={{ p: 4, textAlign: 'center' }}>
             <Typography color="text.secondary">
               아직 지출 내역이 없습니다
@@ -131,9 +127,38 @@ const Expenses: React.FC = () => {
         color="primary"
         sx={{ position: 'fixed', bottom: 80, right: 16 }}
         tooltip="지출 추가"
+        onClick={() => setIsFormOpen(true)}
       >
         <AddIcon />
       </Fab>
+
+      {/* 지출 추가/수정 다이얼로그 */}
+      <Dialog
+        open={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={false}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          지출 추가
+          <IconButton
+            onClick={() => setIsFormOpen(false)}
+            size="small"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent>
+          <ExpenseFormContainer
+            onSuccess={() => {
+              setIsFormOpen(false);
+            }}
+            onCancel={() => setIsFormOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
