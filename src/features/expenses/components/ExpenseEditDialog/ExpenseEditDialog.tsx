@@ -14,7 +14,7 @@ import {
 import { Close as CloseIcon } from '@mui/icons-material';
 import type { TransitionProps } from '@mui/material/transitions';
 
-import type { Expense, ExpenseFormData } from '../../types';
+import type { Expense, ExpenseFormData } from '../../../../types';
 import { ExpenseFormContainer } from '../../../../components/forms/ExpenseForm';
 
 const Transition = React.forwardRef(function Transition(

@@ -20,7 +20,7 @@ import {
   Sort as SortIcon 
 } from '@mui/icons-material';
 
-import type { Expense, ExpenseFilter } from '../../types';
+import type { Expense, ExpenseFilter, SortOption } from '../../../../types';
 import { Button } from '../../../../components/ui/Button';
 import ExpenseItem from '../ExpenseItem';
 
@@ -38,7 +38,6 @@ export interface ExpenseListProps {
   emptyMessage?: string;
 }
 
-type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'category';
 
 const ExpenseList: React.FC<ExpenseListProps> = ({
   expenses,

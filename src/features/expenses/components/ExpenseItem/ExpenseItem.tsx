@@ -29,7 +29,7 @@ import {
   LocalOffer as TagIcon
 } from '@mui/icons-material';
 
-import type { Expense } from '../../types';
+import type { Expense } from '../../../../types';
 import { PAYMENT_METHODS } from '../../../../utils/constants/paymentMethods';
 
 export interface ExpenseItemProps {

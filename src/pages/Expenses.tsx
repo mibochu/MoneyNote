@@ -23,7 +23,7 @@ import ExpenseEditDialog from '../features/expenses/components/ExpenseEditDialog
 import ExpenseDeleteConfirmDialog from '../features/expenses/components/ExpenseDeleteConfirmDialog';
 import { useExpenses } from '../hooks/useExpenses';
 
-import type { Expense, ExpenseFilter } from '../features/expenses/types';
+import type { Expense, ExpenseFilter } from '../types';
 
 const Expenses: React.FC = () => {
   const { state, deleteExpense, updateExpense } = useExpenses();
