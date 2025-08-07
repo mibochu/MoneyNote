@@ -4,7 +4,7 @@ import { CssBaseline } from '@mui/material';
 import { ExpenseProvider } from './context/ExpenseContext';
 import { CategoryProvider } from './context/CategoryContext';
 import { AppLayout } from './components/AppLayout';
-import { Dashboard, Expenses, Budget, Reports, Settings, NotFound } from './pages';
+import { Dashboard, Expenses, Categories, Budget, Reports, Settings, NotFound } from './pages';
 import './styles/App.css';
 
 // Material-UI 테마 설정
@@ -81,6 +81,7 @@ function App() {
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="expenses" element={<Expenses />} />
+                <Route path="categories" element={<Categories />} />
                 <Route path="budget" element={<Budget />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
