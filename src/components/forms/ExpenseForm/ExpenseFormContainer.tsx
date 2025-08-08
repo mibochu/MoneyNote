@@ -35,6 +35,11 @@ const ExpenseFormContainer: React.FC<ExpenseFormContainerProps> = ({
   });
 
   const handleSubmit = async (formData: ExpenseFormData) => {
+    // 이미 제출 중이면 리턴
+    if (isSubmitting) {
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
@@ -69,7 +74,10 @@ const ExpenseFormContainer: React.FC<ExpenseFormContainerProps> = ({
         severity: 'error'
       });
     } finally {
-      setIsSubmitting(false);
+      // 약간의 지연 후 비활성화 해제
+      setTimeout(() => {
+        setIsSubmitting(false);
+      }, 500);
     }
   };
 

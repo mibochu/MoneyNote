@@ -31,6 +31,7 @@ import {
 
 import type { Expense } from '../../../../types';
 import { PAYMENT_METHODS } from '../../../../utils/constants/paymentMethods';
+import { useCategories } from '../../../../hooks/useCategories';
 
 export interface ExpenseItemProps {
   expense: Expense;
@@ -61,8 +62,16 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({
   const [expanded, setExpanded] = useState(showDetails);
   const [isHovered, setIsHovered] = useState(false);
   const theme = useTheme();
+  const { getCategoryById, getSubcategoryById } = useCategories();
 
   const paymentMethodInfo = PAYMENT_METHODS[expense.paymentMethod as keyof typeof PAYMENT_METHODS];
+  
+  // 카테고리와 서브카테고리 이름 조회
+  const category = getCategoryById(expense.category);
+  const subcategory = expense.subcategory ? getSubcategoryById(expense.category, expense.subcategory) : null;
+  
+  const categoryName = category?.name || expense.category; // fallback to ID if not found
+  const subcategoryName = subcategory?.name || expense.subcategory;
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation();
@@ -188,7 +197,7 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({
             {/* 두 번째 줄: 카테고리, 결제수단, 날짜 */}
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
               <Chip
-                label={expense.category}
+                label={categoryName}
                 size="small"
                 color={getCategoryColor(expense.category)}
                 variant="outlined"
@@ -293,7 +302,7 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CategoryIcon fontSize="small" color="action" />
                   <Typography variant="body2" color="text.secondary">
-                    소분류: {expense.subcategory}
+                    소분류: {subcategoryName}
                   </Typography>
                 </Box>
               )}

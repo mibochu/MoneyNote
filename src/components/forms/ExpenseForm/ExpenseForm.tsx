@@ -8,7 +8,8 @@ import {
   FormControlLabel,
   Chip,
   Stack,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
 
@@ -48,16 +49,21 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   categories = []
 }) => {
   // 폼 상태 관리 (2025 React 패턴: 지연 초기화)
-  const [formData, setFormData] = useState<ExpenseFormData>(() => ({
-    amount: initialData?.amount ?? 0,
-    category: initialData?.category ?? '',
-    subcategory: initialData?.subcategory ?? '',
-    description: initialData?.description ?? '',
-    paymentMethod: initialData?.paymentMethod ?? DEFAULT_PAYMENT_METHOD,
-    tags: initialData?.tags ?? [],
-    isFixed: initialData?.isFixed ?? false,
-    date: initialData?.date ?? new Date()
-  }));
+  const [formData, setFormData] = useState<ExpenseFormData>(() => {
+    const defaultDate = new Date();
+    defaultDate.setHours(0, 0, 0, 0); // 시간을 00:00:00으로 정규화
+    
+    return {
+      amount: initialData?.amount ?? 0,
+      category: initialData?.category ?? '',
+      subcategory: initialData?.subcategory ?? '',
+      description: initialData?.description ?? '',
+      paymentMethod: initialData?.paymentMethod ?? DEFAULT_PAYMENT_METHOD,
+      tags: initialData?.tags ?? [],
+      isFixed: initialData?.isFixed ?? false,
+      date: initialData?.date ?? defaultDate
+    };
+  });
 
   // 에러 상태 관리
   const [errors, setErrors] = useState<Partial<Record<keyof ExpenseFormData, string>>>(() => ({}));
@@ -140,10 +146,30 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   };
 
   const handleDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const date = new Date(event.target.value);
+    const dateValue = event.target.value;
+    
+    // 빈 값인 경우 현재 날짜로 설정
+    if (!dateValue) {
+      const today = new Date();
+      // 시간을 00:00:00으로 설정하여 날짜만 비교하도록
+      today.setHours(0, 0, 0, 0);
+      setFormData(prev => ({ ...prev, date: today }));
+      setErrors(prev => ({ ...prev, date: undefined }));
+      return;
+    }
+    
+    // 날짜 문자열을 Date 객체로 변환 (시간은 00:00:00으로 설정)
+    const date = new Date(dateValue + 'T00:00:00');
+    
+    // 유효하지 않은 날짜인지 확인
+    if (isNaN(date.getTime())) {
+      setErrors(prev => ({ ...prev, date: '유효하지 않은 날짜입니다.' }));
+      return;
+    }
+    
     setFormData(prev => ({ ...prev, date }));
     
-    // 실시간 검증
+    // 실시간 검증 (수정된 validator 사용)
     const error = validateField('date', date);
     setErrors(prev => ({ ...prev, date: error || undefined }));
   };
@@ -183,7 +209,19 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     event.preventDefault();
     
     if (validateForm()) {
-      onSubmit(formData);
+      // 제출 전 데이터 검증 및 정제
+      const submissionData: ExpenseFormData = {
+        ...formData,
+        date: formData.date instanceof Date ? formData.date : new Date(formData.date),
+        amount: Number(formData.amount) || 0,
+        description: formData.description.trim(),
+        category: formData.category.trim(),
+        subcategory: formData.subcategory?.trim() || '',
+        tags: formData.tags.filter(tag => tag.trim().length > 0)
+      };
+      
+      console.log('Submitting expense data:', submissionData); // 디버깅용
+      onSubmit(submissionData);
     }
   };
 
@@ -217,7 +255,6 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 error={!!errors.date}
                 helperText={errors.date}
                 fullWidth
-                maxDate={new Date().toISOString().split('T')[0]} // 오늘까지만 선택 가능
               />
               
               {/* 빠른 날짜 선택 버튼들 */}
@@ -384,10 +421,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
               <Button
                 type="submit"
                 variant="contained"
-                startIcon={<SaveIcon />}
+                startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
                 disabled={isLoading}
                 fullWidth={!onCancel}
-                sx={{ flex: onCancel ? 1 : undefined }}
+                sx={{ 
+                  flex: onCancel ? 1 : undefined,
+                  minHeight: '48px' // 로딩 애니메이션 안정성을 위한 최소 높이
+                }}
               >
                 {isLoading ? '저장 중...' : (initialData ? '수정' : '저장')}
               </Button>

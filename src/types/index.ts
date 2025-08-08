@@ -2,8 +2,10 @@
 // 중앙집중식 타입 관리 시스템
 
 export * from './expense.types';
+export * from './income.types';
 export * from './category.types';
 export * from './budget.types';
+export * from './tag.types';
 
 // === EXPENSE FEATURE 타입들 (features/expenses/types에서 이관) ===
 export interface ExpenseFilter {

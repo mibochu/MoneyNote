@@ -1,8 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { ExpenseProvider } from './context/ExpenseContext';
+import { IncomeProvider } from './context/IncomeContext';
 import { CategoryProvider } from './context/CategoryContext';
+import { TagProvider } from './context/TagContext';
+import { BudgetProvider } from './context/BudgetContext';
 import { AppLayout } from './components/AppLayout';
 import { Dashboard, Expenses, Categories, Budget, Reports, Settings, NotFound } from './pages';
 import './styles/App.css';
@@ -74,9 +79,13 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <CategoryProvider>
-        <ExpenseProvider>
-          <Router>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <CategoryProvider>
+        <TagProvider>
+          <ExpenseProvider>
+            <IncomeProvider>
+              <BudgetProvider>
+              <Router>
             <Routes>
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<Dashboard />} />
@@ -88,9 +97,13 @@ function App() {
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
-          </Router>
-        </ExpenseProvider>
-      </CategoryProvider>
+              </Router>
+              </BudgetProvider>
+            </IncomeProvider>
+          </ExpenseProvider>
+        </TagProvider>
+        </CategoryProvider>
+      </LocalizationProvider>
     </ThemeProvider>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import {
   Box,
   Typography,
@@ -9,24 +9,50 @@ import {
   ListItem,
   ListItemText,
   Chip,
-  Stack
+  Button,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   TrendingUp,
   AccountBalance,
   Savings,
-  Receipt
+  Receipt,
+  Add as AddIcon
 } from '@mui/icons-material';
 import { ExpenseContext } from '../context/ExpenseContext';
+import { useCategories } from '../hooks/useCategories';
+import { useIncome } from '../hooks/useIncome';
+import { PieChart, BarChart } from '../components/common/Charts';
+import IncomeDialog from '../components/common/IncomeDialog';
+import type { IncomeFormData } from '../types/income.types';
 
 function Dashboard() {
   const expenseContext = useContext(ExpenseContext);
+  const { state: categoryState } = useCategories();
+  const { getMonthlyIncome, addIncome } = useIncome();
+  
+  // 수입 다이얼로그 상태
+  const [isIncomeDialogOpen, setIsIncomeDialogOpen] = useState(false);
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
   
   if (!expenseContext) {
     throw new Error('Dashboard must be used within ExpenseProvider');
   }
 
   const { state } = expenseContext;
+  
+  // 카테고리 ID 매핑 찾기 (이름으로 고유한 ID 찾기)
+  const incomeCategory = categoryState.categories.find(cat => cat.name === '수입');
+  const savingsCategory = categoryState.categories.find(cat => cat.name === '저축');
 
   // 현재 월의 통계 계산 (2025년 React 패턴: useMemo로 성능 최적화)
   const monthlyStats = useMemo(() => {
@@ -40,30 +66,28 @@ function Dashboard() {
              expenseDate.getFullYear() === currentYear;
     });
 
-    // 카테고리별 분류 계산
-    const income = currentMonthExpenses
-      .filter(expense => expense.category === '수입')
-      .reduce((sum, expense) => sum + expense.amount, 0);
+    // 수입은 Income Context에서 가져오기
+    const monthlyIncome = getMonthlyIncome(now);
 
     const savings = currentMonthExpenses
-      .filter(expense => expense.category === '저축')
+      .filter(expense => expense.category === savingsCategory?.id)
       .reduce((sum, expense) => sum + expense.amount, 0);
 
     const totalExpenses = currentMonthExpenses
-      .filter(expense => expense.category !== '수입' && expense.category !== '저축')
+      .filter(expense => expense.category !== incomeCategory?.id && expense.category !== savingsCategory?.id)
       .reduce((sum, expense) => sum + expense.amount, 0);
 
-    // 예산 잔액 = 수입 - 지출 - 저축
-    const budgetBalance = income - totalExpenses - savings;
+    // 예살 잔액 = 수입 - 지출 - 저축
+    const budgetBalance = monthlyIncome - totalExpenses - savings;
 
     return {
-      income,
+      income: monthlyIncome,
       totalExpenses,
       savings,
       budgetBalance,
       currentMonthExpenses
     };
-  }, [state.expenses]);
+  }, [state.expenses, getMonthlyIncome, incomeCategory?.id, savingsCategory?.id]);
 
   // 최근 거래 내역 (최근 5개)
   const recentTransactions = useMemo(() => {
@@ -77,7 +101,7 @@ function Dashboard() {
     const paymentMethods: Record<string, number> = {};
     
     monthlyStats.currentMonthExpenses
-      .filter(expense => expense.category !== '수입' && expense.category !== '저축')
+      .filter(expense => expense.category !== incomeCategory?.id && expense.category !== savingsCategory?.id)
       .forEach(expense => {
         const method = expense.paymentMethod || '미지정';
         paymentMethods[method] = (paymentMethods[method] || 0) + expense.amount;
@@ -86,7 +110,30 @@ function Dashboard() {
     return Object.entries(paymentMethods)
       .sort(([,a], [,b]) => b - a)
       .slice(0, 4); // 상위 4개만 표시
-  }, [monthlyStats.currentMonthExpenses]);
+  }, [monthlyStats.currentMonthExpenses, incomeCategory?.id, savingsCategory?.id]);
+
+  // 수입 추가 처리
+  const handleIncomeAdd = (incomeData: IncomeFormData) => {
+    try {
+      addIncome(incomeData);
+      setNotification({
+        open: true,
+        message: '수입이 성공적으로 추가되었습니다.',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Failed to add income:', error);
+      setNotification({
+        open: true,
+        message: '수입 추가 중 오류가 발생했습니다.',
+        severity: 'error'
+      });
+    }
+  };
+
+  const handleCloseNotification = () => {
+    setNotification(prev => ({ ...prev, open: false }));
+  };
 
   // 금액 포맷 함수
   const formatCurrency = (amount: number): string => {
@@ -98,12 +145,25 @@ function Dashboard() {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        💰 대시보드
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        가계부 현황을 한눈에 확인하세요
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom>
+            💰 대시보드
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            가계부 현황을 한눈에 확인하세요
+          </Typography>
+        </Box>
+        
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setIsIncomeDialogOpen(true)}
+          sx={{ px: 3 }}
+        >
+          수입 추가
+        </Button>
+      </Box>
 
       {/* 요약 카드들 */}
       <Box sx={{ 
@@ -180,49 +240,24 @@ function Dashboard() {
       }}>
         <Paper sx={{ p: 3, height: 400 }}>
           <Typography variant="h6" gutterBottom>
-            이번 달 지출 현황
+            카테고리별 지출 비율
           </Typography>
           {monthlyStats.currentMonthExpenses.length > 0 ? (
-            <Box sx={{ height: 300, overflow: 'auto' }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                총 {monthlyStats.currentMonthExpenses.length}건의 거래
-              </Typography>
-              <Stack spacing={1}>
-                {monthlyStats.currentMonthExpenses
-                  .filter(expense => expense.category !== '수입' && expense.category !== '저축')
-                  .slice(0, 10)
-                  .map((expense, index) => (
-                    <Box 
-                      key={expense.id || index}
-                      sx={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        p: 1,
-                        bgcolor: 'grey.50',
-                        borderRadius: 1
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="body2" fontWeight="bold">
-                          {expense.description || '설명 없음'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {expense.category}
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" color="error" fontWeight="bold">
-                        -{formatCurrency(expense.amount)}
-                      </Typography>
-                    </Box>
-                  ))
-                }
-              </Stack>
+            <Box sx={{ height: 320 }}>
+              <PieChart 
+                data={[
+                  { label: '식비', value: 150000, color: '#FF6B6B' },
+                  { label: '교통', value: 80000, color: '#4ECDC4' },
+                  { label: '쇼핑', value: 120000, color: '#45B7D1' },
+                  { label: '기타', value: 50000, color: '#96CEB4' }
+                ]}
+                height={280}
+              />
             </Box>
           ) : (
             <Box
               sx={{
-                height: 300,
+                height: 320,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -239,7 +274,30 @@ function Dashboard() {
 
         <Paper sx={{ p: 3, height: 400 }}>
           <Typography variant="h6" gutterBottom>
-            최근 거래
+            월별 지출 추이
+          </Typography>
+          <Box sx={{ height: 320 }}>
+            <BarChart 
+              data={[
+                { label: '1월', value: 250000 },
+                { label: '2월', value: 180000 },
+                { label: '3월', value: 320000 },
+                { label: '4월', value: 210000 },
+                { label: '5월', value: 290000 },
+                { label: '6월', value: 340000 }
+              ]}
+              height={280}
+              color="#FF6B6B"
+            />
+          </Box>
+        </Paper>
+      </Box>
+
+      {/* 최근 거래 내역 */}
+      <Paper sx={{ mt: 3 }}>
+        <Box sx={{ p: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            최근 거래 내역
           </Typography>
           {recentTransactions.length > 0 ? (
             <List sx={{ height: 300, overflow: 'auto', p: 0 }}>
@@ -301,8 +359,8 @@ function Dashboard() {
               </Typography>
             </Box>
           )}
-        </Paper>
-      </Box>
+        </Box>
+      </Paper>
 
       {/* 결제수단별 집계 */}
       {paymentMethodStats.length > 0 && (
@@ -339,6 +397,29 @@ function Dashboard() {
           </Box>
         </Paper>
       )}
+
+      {/* 수입 추가 다이얼로그 */}
+      <IncomeDialog
+        open={isIncomeDialogOpen}
+        onClose={() => setIsIncomeDialogOpen(false)}
+        onSave={handleIncomeAdd}
+      />
+
+      {/* 알림 스낵바 */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={3000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseNotification} 
+          severity={notification.severity}
+          variant="filled"
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

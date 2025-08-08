@@ -116,7 +116,7 @@ const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
 
 // Provider 컴포넌트
 export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(expenseReducer, initialState, undefined);
+  const [state, dispatch] = useReducer(expenseReducer, initialState);
 
   // 컴포넌트 마운트 시 localStorage에서 데이터 로드 (2025 React 패턴: cleanup 및 에러 처리 강화)
   useEffect(() => {
@@ -185,13 +185,33 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       
       const now = new Date();
+      
+      // 날짜 객체 안전하게 처리
+      let expenseDate: Date;
+      if (expenseData.date instanceof Date) {
+        expenseDate = new Date(expenseData.date);
+      } else {
+        expenseDate = new Date(expenseData.date);
+      }
+      
+      // 시간을 00:00:00으로 정규화 (날짜만 비교하도록)
+      expenseDate.setHours(0, 0, 0, 0);
+      
+      // 유효하지 않은 날짜인지 확인
+      if (isNaN(expenseDate.getTime())) {
+        dispatch({ type: 'SET_ERROR', payload: '유효하지 않은 날짜입니다.' });
+        return;
+      }
+      
       const newExpense: Expense = {
         id: `exp-${now.getTime()}`, // 더 안전한 ID 생성
         ...expenseData,
+        date: expenseDate, // 명시적으로 Date 객체로 설정
         createdAt: now,
         updatedAt: now
       };
       
+      console.log('Adding new expense:', newExpense); // 디버깅용 로그
       dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
     } catch (error) {
       console.error('Failed to add expense:', error);

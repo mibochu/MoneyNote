@@ -49,7 +49,7 @@ export const DEFAULT_VALIDATION_RULES: ValidationRules = {
   },
   date: {
     minDate: new Date('2000-01-01'),
-    maxDate: new Date(),
+    // maxDate 제거 - 미래 날짜도 입력 가능하도록
     required: true
   }
 };
@@ -116,7 +116,7 @@ export const validatePaymentMethod = (paymentMethod: string, rules: ValidationRu
 };
 
 export const validateDate = (date: Date, rules: ValidationRules['date'] = {}): string | null => {
-  const { minDate, maxDate = new Date(), required = true } = rules;
+  const { minDate, maxDate, required = true } = rules; // maxDate 기본값 제거
 
   if (required && !date) {
     return '날짜를 선택해주세요.';
@@ -130,6 +130,7 @@ export const validateDate = (date: Date, rules: ValidationRules['date'] = {}): s
     return `날짜는 ${minDate.toLocaleDateString('ko-KR')} 이후여야 합니다.`;
   }
 
+  // maxDate가 명시적으로 설정된 경우에만 체크
   if (maxDate && date > maxDate) {
     return `날짜는 ${maxDate.toLocaleDateString('ko-KR')} 이전이어야 합니다.`;
   }

@@ -19,13 +19,49 @@ import {
   Backup,
   ColorLens,
   Info,
-  ChevronRight
+  ChevronRight,
+  LocalOffer as TagIcon
 } from '@mui/icons-material';
+
+import TagManager from '../features/tags/components/TagManager';
+import TagSummary from '../features/tags/components/TagSummary';
 
 const Settings: React.FC = () => {
   const [darkMode, setDarkMode] = React.useState(false);
   const [notifications, setNotifications] = React.useState(true);
   const [autoBackup, setAutoBackup] = React.useState(false);
+  const [currentView, setCurrentView] = React.useState<'main' | 'tags' | 'tagSummary'>('main');
+
+  // 뷰 렌더링
+  if (currentView === 'tags') {
+    return (
+      <Box>
+        <Button 
+          onClick={() => setCurrentView('main')} 
+          sx={{ mb: 2 }}
+          startIcon={<ChevronRight sx={{ transform: 'rotate(180deg)' }} />}
+        >
+          설정으로 돌아가기
+        </Button>
+        <TagManager />
+      </Box>
+    );
+  }
+
+  if (currentView === 'tagSummary') {
+    return (
+      <Box>
+        <Button 
+          onClick={() => setCurrentView('main')} 
+          sx={{ mb: 2 }}
+          startIcon={<ChevronRight sx={{ transform: 'rotate(180deg)' }} />}
+        >
+          설정으로 돌아가기
+        </Button>
+        <TagSummary />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -111,6 +147,32 @@ const Settings: React.FC = () => {
             <ListItemText
               primary="카테고리 관리"
               secondary="수입/지출 카테고리 설정"
+            />
+            <ChevronRight />
+          </ListItemButton>
+          
+          <Divider />
+          
+          <ListItemButton onClick={() => setCurrentView('tags')}>
+            <ListItemIcon>
+              <TagIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="태그 관리"
+              secondary="지출 분류용 태그 관리"
+            />
+            <ChevronRight />
+          </ListItemButton>
+          
+          <Divider />
+          
+          <ListItemButton onClick={() => setCurrentView('tagSummary')}>
+            <ListItemIcon>
+              <TagIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="태그별 통계"
+              secondary="태그별 지출 현황 및 분석"
             />
             <ChevronRight />
           </ListItemButton>

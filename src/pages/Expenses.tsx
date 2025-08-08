@@ -33,11 +33,15 @@ const Expenses: React.FC = () => {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
   const [filter, setFilter] = useState<ExpenseFilter>({});
-  const [notification, setNotification] = useState(() => ({
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
     open: false,
     message: '',
-    severity: 'success' as const
-  }));
+    severity: 'success'
+  });
 
   const expenses = state.expenses || [];
 
