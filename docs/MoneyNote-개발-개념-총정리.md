@@ -1,569 +1,1216 @@
 # MoneyNote 개발 개념 총정리 📚
 
-> **출근길 복습용** - MoneyNote 프로젝트에서 실제 사용된 React/TypeScript 핵심 개념들
+> **출근길 복습용** - MoneyNote 프로젝트에서 실제 사용된 2025년 최신 React/TypeScript 핵심 개념들
+> 
+> **🆕 2025년 업데이트**: 실무에서 사용하는 고급 패턴들과 React 공식문서 최신 권장사항 반영
 
-## 🎯 이 앱이 필요로 하는 개념들
+## 🎯 MoneyNote 앱 전체 구조와 필요한 개념들
 
-MoneyNote는 **가계부 관리 앱**으로, 다음과 같은 기능들이 필요합니다:
-- 📝 지출 입력 (복잡한 폼 처리)
-- 📂 카테고리 관리 (계층형 데이터)
-- 📊 통계 및 차트 (데이터 계산 및 시각화)
-- 💾 데이터 저장 (로컬스토리지)
-- 🔄 상태 관리 (여러 컴포넌트 간 데이터 공유)
+MoneyNote는 **실무 수준 가계부 관리 앱**으로, 총 **6개 페이지**를 가지고 있습니다:
 
-이를 위해 필요한 **핵심 개념들**:
+### 📱 앱 구조 (실제 구현된 기능들)
+- 🏠 **Dashboard**: 월별 요약, 차트, 최근 지출 (70% 완성)
+- 💳 **Expenses**: 지출 입력/수정/삭제, 필터링 (90% 완성)
+- 📂 **Categories**: 대분류/소분류 관리 시스템 (95% 완성)
+- 💰 **Budget**: 예산 설정 및 추적 (UI만 완성, 로직 30%)
+- 📊 **Reports**: 분석 리포트 (UI만 완성, 로직 20%)
+- ⚙️ **Settings**: 앱 설정 (기본 UI만)
+
+### 🧠 학습할 핵심 개념들 (난이도별 정리)
+
+**🔰 초급 (React 기초)**
+- 함수형 컴포넌트와 JSX
+- Props와 상태 관리 (useState)
+- 이벤트 처리와 폼 관리
+
+**🔥 중급 (실무 필수)**
+- useEffect와 생명주기 관리
+- Context API와 전역 상태
+- React Router와 페이지 네비게이션
+- Material-UI와 테마 시스템
+
+**⚡ 고급 (실무 심화)**
+- useReducer와 복잡한 상태 관리
+- 다중 Context Provider 패턴
+- 불변성과 복잡한 데이터 업데이트
+- TypeScript 고급 타입 시스템
+- 커스텀 훅과 로직 분리
 
 ---
 
-## 📖 단원 1: React 기초 개념
+## 📖 단원 1: React 기초 개념 (🔰 초급)
+
+> **학습 목표**: MoneyNote의 가장 기본적인 컴포넌트들을 이해하고 만들 수 있다
 
 ### 1.1 함수형 컴포넌트와 JSX
+
+**🤔 이게 뭐예요?**
+- **함수형 컴포넌트**: HTML을 만들어주는 함수라고 생각하세요
+- **JSX**: JavaScript 안에서 HTML을 쓸 수 있게 해주는 문법
+
+**🍕 비유로 설명**
+레고 블록을 만드는 공장이라고 생각해보세요:
+- 함수 = 레고 블록을 만드는 기계
+- JSX = 기계에서 나오는 완성된 레고 블록 (HTML)
+
 ```typescript
-// 기본 함수형 컴포넌트
-const ExpenseItem: React.FC = () => {
+// 2025년 React 공식문서 방식 (간단하고 명확)
+function ExpenseItem() {
   return (
     <div>
       <h3>지출 항목</h3>
     </div>
   );
-};
-```
-**MoneyNote 적용**: 모든 컴포넌트가 함수형으로 구현됨
-
-### 1.2 Props를 통한 데이터 전달
-```typescript
-interface ExpenseItemProps {
-  expense: Expense;
-  onEdit: (expense: Expense) => void;
-  onDelete: (id: string) => void;
 }
 
-const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, onEdit, onDelete }) => {
+// 사용할 때
+<ExpenseItem />  // 화면에 "지출 항목" 제목 보여짐
+```
+
+**💡 핵심 포인트**
+- `function ComponentName() { ... }` : React 컴포넌트 만들기
+- `return ( ... )` : 이 HTML을 화면에 보여줘!
+- `<div>`, `<h3>` : 일반 HTML 태그와 똑같음
+- **공식문서 방식**: `function` 선언이 가장 기본!
+
+**MoneyNote 적용**: 버튼, 입력창, 목록 등 모든 화면 요소가 이런 함수들로 만들어짐
+
+### 1.2 Props를 통한 데이터 전달
+
+**🤔 이게 뭐예요?**
+- **Props**: 부모가 자식에게 주는 정보
+- 함수의 매개변수와 똑같음
+
+**🍕 간단한 예시부터**
+```typescript
+// 기본 방법 (공식문서 스타일)
+function MyButton({ title }: { title: string }) {
+  return <button>{title}</button>;
+}
+
+// 사용하기
+<MyButton title="클릭하세요!" />
+```
+
+**🔥 조금 더 복잡한 예시**
+```typescript
+// interface로 더 명확하게
+interface MyButtonProps {
+  /** 버튼 안에 보여질 텍스트 */
+  title: string;
+  /** 버튼이 비활성화되어 있는지 */
+  disabled?: boolean;
+}
+
+function MyButton({ title, disabled = false }: MyButtonProps) {
+  return <button disabled={disabled}>{title}</button>;
+}
+
+// 사용하기
+<MyButton title="비활성화 버튼" disabled={true} />
+<MyButton title="일반 버튼" />
+```
+
+**🎆 MoneyNote 실제 예시**
+```typescript
+// 지출 항목 컴포넌트
+function ExpenseItem({ expense, onEdit, onDelete }: {
+  expense: { description: string; amount: number };
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
     <div>
       <span>{expense.description}</span>
-      <button onClick={() => onEdit(expense)}>수정</button>
-      <button onClick={() => onDelete(expense.id)}>삭제</button>
+      <span>{expense.amount}원</span>
+      <button onClick={onEdit}>수정</button>
+      <button onClick={onDelete}>삭제</button>
     </div>
+  );
+}
+
+// 사용하기
+<ExpenseItem 
+  expense={{ description: "커피", amount: 5000 }}
+  onEdit={() => console.log('수정!')}
+  onDelete={() => console.log('삭제!')}
+/>
+```
+
+**💡 핵심 포인트**
+- `function Component({ prop1, prop2 })` : 가장 기본적이고 간단한 방법
+- `interface Props { ... }` : 더 복잡한 경우에 사용
+- 부모에서 주는 데이터로 자식이 화면을 만듦
+- **간단하게 시작해서 필요할 때 복잡하게!**
+
+**MoneyNote 적용**: 카테고리 목록(부모)에서 각 카테고리 항목(자식)에게 카테고리 정보를 전달
+
+### 1.3 useState로 컴포넌트 상태 관리 (2025년 최신 패턴)
+
+**🤔 이게 뭐예요?**
+- **useState**: 컴포넌트의 "기억"을 관리하는 도구
+- 값이 바뀌면 화면도 자동으로 다시 그려집니다
+- **2025년 핵심**: 지연 초기화와 함수형 업데이트가 필수!
+
+**🍕 비유로 설명**
+TV 리모컨의 볼륨 버튼이라고 생각해보세요:
+- 현재 볼륨(상태): 15
+- 볼륨 올리기 버튼을 누르면 → 16이 되고 → TV 화면에도 16으로 표시됨
+
+#### 🔥 2025년 실무 패턴
+
+**1. 지연 초기화 (Lazy Initialization)**
+```typescript
+// ❌ 구식 방법 (매 렌더링마다 실행됨)
+const [categories, setCategories] = useState(loadCategoriesFromStorage());
+
+// ✅ 2025년 방법 (처음 한 번만 실행)
+const [categories, setCategories] = useState(() => {
+  // 복잡한 초기화 로직은 함수 안에!
+  const savedCategories = localStorage.getItem('categories');
+  if (savedCategories) {
+    try {
+      return JSON.parse(savedCategories);
+    } catch (error) {
+      console.error('Failed to parse categories:', error);
+      return DEFAULT_CATEGORIES;
+    }
+  }
+  return DEFAULT_CATEGORIES;
+});
+
+// MoneyNote 실제 코드에서 사용된 패턴
+const [notification, setNotification] = useState(() => ({
+  open: false,
+  message: '',
+  severity: 'success' as const  // const assertion으로 타입 좁히기
+}));
+```
+
+**2. 함수형 업데이트 (Functional Updates)**
+```typescript
+// ❌ 구식 방법 (동시 업데이트시 문제 발생 가능)
+function handleClick() {
+  setCount(count + 1);  // 현재 값에 의존 - 위험!
+}
+
+// ✅ 2025년 방법 (항상 최신 값 보장)
+function handleClick() {
+  setCount(prevCount => prevCount + 1);  // 이전 값을 받아서 새 값 계산
+}
+
+// MoneyNote 실제 복잡한 예시 (중첩 배열 업데이트)
+const handleCategoryUpdate = (categoryId: string, newData: any) => {
+  setCategories(prevCategories =>  // 이전 카테고리들을 받아서
+    prevCategories.map(category =>  // 각 카테고리를 확인해서
+      category.id === categoryId
+        ? { ...category, ...newData, updatedAt: new Date() }  // 해당 카테고리만 업데이트
+        : category  // 나머지는 그대로
+    )
   );
 };
 ```
-**MoneyNote 적용**: CategoryManager → CategoryForm 데이터 전달
 
-### 1.3 useState로 컴포넌트 상태 관리
+**3. 타입 안전성 강화**
 ```typescript
-const [isFormOpen, setIsFormOpen] = useState(false);
-const [categories, setCategories] = useState<Category[]>([]);
-const [formData, setFormData] = useState<CategoryFormData>({
-  name: '',
-  color: CATEGORY_COLORS[0],
-  icon: CATEGORY_ICONS[0]
-});
+// ✅ 2025년 TypeScript 패턴
+interface NotificationState {
+  open: boolean;
+  message: string;
+  severity: 'success' | 'error' | 'warning' | 'info';
+}
+
+const [notification, setNotification] = useState<NotificationState>(() => ({
+  open: false,
+  message: '',
+  severity: 'success'
+}));
+
+// null 병합 연산자 활용 (MoneyNote 실제 코드)
+const [formData, setFormData] = useState<ExpenseFormData>(() => ({
+  amount: initialData?.amount ?? 0,        // || 대신 ?? 사용
+  category: initialData?.category ?? '',
+  description: initialData?.description ?? '',
+  date: initialData?.date ?? new Date()
+}));
 ```
-**MoneyNote 적용**: 폼 열기/닫기, 카테고리 목록, 폼 입력값 관리
+
+**💡 2025년 핵심 포인트**
+- `const [값, 값바꾸는함수] = useState(초기화함수)` : 지연 초기화 패턴
+- `값바꾸는함수(이전값 => 새값)` : 함수형 업데이트 필수
+- 값이 바뀌면 컴포넌트가 **자동으로 다시 그려짐** (리렌더링)
+- **React 19**: 자동 배치 처리로 성능 최적화
+- **타입 안전성**: `??` 연산자와 `as const` 활용
+
+**🎯 실생활 예시**
+```typescript
+// 전등 스위치 만들기
+const [전등상태, 전등바꾸기] = useState('꺼짐');
+
+return (
+  <div>
+    <p>전등: {전등상태}</p>  {/* 화면에 "전등: 꺼짐" 표시 */}
+    <button onClick={() => 전등바꾸기('켜짐')}>켜기</button>
+    <button onClick={() => 전등바꾸기('꺼짐')}>끄기</button>
+  </div>
+);
+```
+
+**MoneyNote 실제 적용 사례**: 
+- 모달 상태 (`isFormOpen`) - 지연 초기화로 성능 최적화
+- 카테고리 목록 (`categories`) - localStorage 연동 + 에러 처리
+- 복잡한 폼 데이터 (`formData`) - nullish coalescing으로 안전한 초기화
+- 알림 시스템 (`notification`) - 함수형 업데이트로 상태 충돌 방지
 
 ---
 
 ## 📖 단원 2: 이벤트 처리와 폼 관리
 
 ### 2.1 이벤트 핸들러 패턴
+
+**🤔 이게 뭐예요?**
+- **이벤트**: 사용자가 뭔가 할 때 (클릭, 타이핑, 스크롤 등)
+- **핸들러**: 그 이벤트가 일어났을 때 실행할 함수
+
+**🍕 비유로 설명**
+도어벨(초인종)이라고 생각해보세요:
+- 이벤트: "딩동!" (누군가 버튼을 눌렀을 때)
+- 핸들러: 문 열어주기, 인터폰으로 대답하기 등
+
 ```typescript
-const handleSubmit = (event: React.FormEvent) => {
-  event.preventDefault(); // 기본 폼 제출 방지
-  if (validateForm()) {
-    onSubmit(formData);
+// 이벤트 핸들러 만들기 (도어벨 대응 매뉴얼)
+const handleSubmit = (event) => {
+  event.preventDefault(); // "잠깐! 기본 동작 하지마!" (페이지 새로고침 방지)
+  
+  if (validateForm()) {   // 폼이 올바르게 작성되었나 확인
+    onSubmit(formData);   // 맞다면 데이터 제출!
+  } else {
+    alert('입력을 확인해주세요'); // 틀렸다면 알림
   }
 };
 
-const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  const { name, value } = event.target;
-  setFormData(prev => ({
-    ...prev,
-    [name]: value
+// 입력창에 글을 쓸 때마다 실행되는 함수 (타이핑 감지기)
+const handleInputChange = (event) => {
+  const 입력창이름 = event.target.name;   // 어떤 입력창인지 (예: "email", "password")
+  const 입력한내용 = event.target.value;  // 입력창에 뭐라고 썼는지
+
+  setFormData(이전값 => ({
+    ...이전값,              // 기존 데이터는 그대로 두고
+    [입력창이름]: 입력한내용  // 해당 입력창의 값만 업데이트
   }));
 };
-```
-**MoneyNote 적용**: ExpenseForm, CategoryForm에서 입력값 처리
 
-### 2.2 폼 유효성 검증
+// HTML에서 사용하기
+return (
+  <form onSubmit={handleSubmit}>  {/* 제출 버튼 누르면 handleSubmit 실행 */}
+    <input 
+      name="email"
+      onChange={handleInputChange}  {/* 글자 쓸 때마다 handleInputChange 실행 */}
+      placeholder="이메일을 입력하세요"
+    />
+    <button type="submit">제출</button>
+  </form>
+);
+```
+
+**💡 핵심 포인트**
+- `event.preventDefault()`: 기본 동작을 막아! (페이지 새로고침 방지)
+- `event.target`: 이벤트가 일어난 곳 (어떤 버튼, 어떤 입력창인지)
+- `onChange`, `onClick`, `onSubmit`: 언제 함수를 실행할지 정하는 것
+
+**🎯 실생활 예시**
 ```typescript
-const validateForm = (): boolean => {
-  const newErrors: { name?: string } = {};
-  
-  if (!formData.name.trim()) {
-    newErrors.name = '이름을 입력해주세요';
-  } else if (formData.name.length < 2) {
-    newErrors.name = '이름은 2자 이상이어야 합니다';
+// 2025년 React 공식문서 방식 - 간단한 카운터
+function Counter() {
+  const [count, setCount] = useState(0);
+
+  function handleClick() {
+    setCount(count + 1);  // 간단한 경우는 이렇게도 OK
+  }
+
+  return (
+    <div>
+      <p>현재 숫자: {count}</p>
+      <button onClick={handleClick}>+1</button>
+    </div>
+  );
+}
+```
+
+**MoneyNote 적용**: 
+- 카테고리 추가 버튼 클릭 → 폼 열리기
+- 입력창에 이름 입력 → 실시간으로 저장되기
+- 저장 버튼 클릭 → 데이터 저장하기
+
+---
+
+## 📖 단원 3: React Router와 네비게이션 (🔥 중급)
+
+### 3.1 React Router 기본 구조
+
+**🤔 이게 뭐예요?**
+- **Router**: 웹사이트에서 페이지를 바꿔주는 시스템
+- **Route**: 주소(URL)와 페이지를 연결하는 규칙
+
+**🏠 비유로 설명**
+아파트 호수판이라고 생각해보세요:
+- `/dashboard` → 101호 (대시보드 페이지)
+- `/expenses` → 102호 (지출 페이지)
+- `/categories` → 103호 (카테고리 페이지)
+
+**MoneyNote의 실제 라우팅 구조**:
+```typescript
+// src/App.tsx - 실제 구현된 라우팅
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CategoryProvider>
+        <ExpenseProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<AppLayout />}>
+                <Route index element={<Dashboard />} />        {/* 홈: / */}
+                <Route path="expenses" element={<Expenses />} />   {/* /expenses */}
+                <Route path="categories" element={<Categories />} /> {/* /categories */}
+                <Route path="budget" element={<Budget />} />      {/* /budget */}
+                <Route path="reports" element={<Reports />} />    {/* /reports */}
+                <Route path="settings" element={<Settings />} />  {/* /settings */}
+                <Route path="*" element={<NotFound />} />         {/* 잘못된 주소 */}
+              </Route>
+            </Routes>
+          </Router>
+        </ExpenseProvider>
+      </CategoryProvider>
+    </ThemeProvider>
+  );
+}
+```
+
+**💡 핵심 개념들**:
+
+1. **Nested Routes** (중첩 라우팅): 
+   ```typescript
+   // AppLayout이 공통 레이아웃 (네비게이션 바, 사이드바)
+   // 그 안에서 페이지들이 바뀜
+   <Route path="/" element={<AppLayout />}>
+     <Route index element={<Dashboard />} />  // 기본 페이지
+     <Route path="expenses" element={<Expenses />} />
+   </Route>
+   ```
+
+2. **Index Route**: 
+   ```typescript
+   // "/" 주소에서 보여줄 기본 페이지
+   <Route index element={<Dashboard />} />
+   ```
+
+3. **Catch-all Route**:
+   ```typescript
+   // 존재하지 않는 주소로 들어오면 404 페이지
+   <Route path="*" element={<NotFound />} />
+   ```
+
+### 3.2 네비게이션과 Link 컴포넌트
+
+**🎯 실제 MoneyNote 네비게이션**:
+```typescript
+// src/components/AppLayout/AppLayout.tsx에서 실제 구현
+function NavigationDrawer() {
+  const menuItems = [
+    { text: '대시보드', icon: <DashboardIcon />, path: '/' },
+    { text: '지출 관리', icon: <ReceiptIcon />, path: '/expenses' },
+    { text: '카테고리', icon: <CategoryIcon />, path: '/categories' },
+    { text: '예산', icon: <AccountBalanceIcon />, path: '/budget' },
+    { text: '리포트', icon: <AssessmentIcon />, path: '/reports' },
+    { text: '설정', icon: <SettingsIcon />, path: '/settings' },
+  ];
+
+  return (
+    <List>
+      {menuItems.map((item) => (
+        <ListItem key={item.text} component={Link} to={item.path}>
+          <ListItemIcon>{item.icon}</ListItemIcon>
+          <ListItemText primary={item.text} />
+        </ListItem>
+      ))}
+    </List>
+  );
+}
+```
+
+**💡 핵심 포인트**:
+- `Link` 컴포넌트: 페이지 새로고침 없이 이동
+- `to` prop: 어느 주소로 갈지 정하기
+- Material-UI와 통합: `component={Link}`로 스타일 유지
+
+---
+
+## 📖 단원 4: Material-UI 테마 시스템 (🔥 중급)
+
+### 4.1 테마 설정과 전역 스타일
+
+**🤔 이게 뭐예요?**
+- **테마**: 웹사이트 전체의 색깔, 글씨체, 스타일을 한 번에 관리하는 시스템
+
+**🎨 비유로 설명**
+인테리어 컨셉이라고 생각해보세요:
+- 기본 색상 팔레트 정하기 (파란색 계열, 회색 계열)
+- 글씨체 통일하기 (전체 Roboto 폰트)
+- 모서리 둥글게 만들기 (카드, 버튼 등)
+
+**MoneyNote의 실제 테마 설정**:
+```typescript
+// src/App.tsx - 실제 구현된 테마
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#1976d2',    // 메인 파란색 (버튼, 링크 등)
+    },
+    secondary: {
+      main: '#dc004e',    // 강조색 빨간색
+    },
+    background: {
+      default: '#f5f5f5',  // 페이지 배경색 (연한 회색)
+    },
+  },
+  breakpoints: {
+    values: {
+      xs: 0,      // 모바일 (0px~)
+      sm: 600,    // 태블릿 (600px~)
+      md: 900,    // 작은 데스크톱 (900px~)
+      lg: 1200,   // 큰 데스크톱 (1200px~)
+      xl: 1536,   // 초대형 화면 (1536px~)
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h4: { fontWeight: 600 },  // 제목은 굵게
+    h6: { fontWeight: 600 },
+  },
+  components: {
+    // 모든 Paper(카드배경) 컴포넌트에 적용
+    MuiPaper: {
+      styleOverrides: {
+        root: { borderRadius: 12 }  // 모서리 둥글게
+      },
+    },
+    // 모든 Card 컴포넌트에 적용
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',  // 살짝 그림자
+        },
+      },
+    },
+    // 모든 Button 컴포넌트에 적용
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          textTransform: 'none',  // 버튼 글씨 대문자로 안 바꾸기
+          fontWeight: 600,
+        },
+      },
+    },
+  },
+});
+```
+
+### 4.2 반응형 디자인과 Breakpoints
+
+**💻📱 화면 크기별 대응**:
+```typescript
+// sx prop을 이용한 반응형 스타일링
+<Box sx={{
+  display: 'flex',
+  flexDirection: { xs: 'column', md: 'row' },  // 모바일은 세로, 데스크톱은 가로
+  gap: { xs: 2, md: 3 },                       // 모바일 16px, 데스크톱 24px 간격
+  padding: { xs: 2, sm: 3, md: 4 },          // 화면 클수록 여백 더 크게
+}}>
+  <Card sx={{ width: { xs: '100%', md: '50%' } }}>  {/* 모바일 100%, 데스크톱 50% */}
+    카드 내용
+  </Card>
+</Box>
+```
+
+**MoneyNote에서 활용 사례**:
+- 대시보드: 모바일에서는 카드들이 세로 배치, 데스크톱에서는 가로 배치
+- 네비게이션: 모바일에서는 서랍(Drawer), 데스크톱에서는 사이드바
+- 폼: 모바일에서는 입력창이 세로로, 태블릿 이상에서는 가로로 배치
+
+---
+
+## 📖 단원 5: Context API와 전역 상태 관리 (⚡ 고급)
+
+### 5.1 Context API 기본 개념
+
+**🤔 이게 뭐예요?**
+- **Context**: 앱 전체에서 공유하는 데이터 저장소
+- **Provider**: 데이터를 제공하는 컴포넌트
+- **Consumer**: 데이터를 사용하는 컴포넌트
+
+**🏢 비유로 설명**
+회사의 공지사항 게시판이라고 생각해보세요:
+- **Context**: 게시판 자체
+- **Provider**: 공지사항을 올리는 총무팀
+- **Consumer**: 공지사항을 보는 직원들
+
+### 5.2 MoneyNote의 다중 Context 구조
+
+MoneyNote는 **2개의 Context**를 사용합니다:
+
+1. **CategoryContext**: 카테고리 관리
+2. **ExpenseContext**: 지출 관리
+
+```typescript
+// App.tsx에서 Provider 중첩 사용
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CategoryProvider>         {/* 1단계: 카테고리 데이터 제공 */}
+        <ExpenseProvider>        {/* 2단계: 지출 데이터 제공 */}
+          <Router>
+            {/* 모든 페이지에서 두 Context 모두 사용 가능 */}
+          </Router>
+        </ExpenseProvider>
+      </CategoryProvider>
+    </ThemeProvider>
+  );
+}
+```
+
+### 5.3 useReducer와 고급 상태 관리
+
+**💡 2025년 React 고급 패턴**:
+```typescript
+// ExpenseContext.tsx - 실제 구현된 고급 패턴
+const expenseReducer = (state: ExpenseState, action: ExpenseAction): ExpenseState => {
+  // 방어적 프로그래밍: 잘못된 액션 체크
+  if (!action || typeof action.type !== 'string') {
+    console.error('Invalid action received:', action);
+    return state;
   }
   
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
+  switch (action.type) {
+    case 'ADD_EXPENSE':
+      // 중복 추가 방지 로직
+      if (state.expenses.some(expense => expense.id === action.payload.id)) {
+        console.warn('Expense with this ID already exists:', action.payload.id);
+        return state;
+      }
+      return { ...state, expenses: [...state.expenses, action.payload], error: null };
+    
+    case 'DELETE_EXPENSE':
+      const filteredExpenses = state.expenses.filter(expense => expense.id !== action.payload);
+      // 삭제할 항목이 없으면 기존 상태 반환 (성능 최적화)
+      if (filteredExpenses.length === state.expenses.length) {
+        console.warn('Cannot delete expense: ID not found:', action.payload);
+        return state;
+      }
+      return { ...state, expenses: filteredExpenses, error: null };
+    
+    default:
+      // TypeScript exhaustive check 패턴
+      const exhaustiveCheck: never = action;
+      console.error('Unhandled action type:', exhaustiveCheck);
+      return state;
+  }
 };
 ```
-**MoneyNote 적용**: 카테고리명 중복 체크, 필수값 검증
 
----
+### 5.4 Context와 localStorage 연동
 
-## 📖 단원 3: useEffect와 생명주기
-
-### 3.1 컴포넌트 마운트 시 데이터 로드
+**⚡ 실무 수준 데이터 영속성**:
 ```typescript
+// useEffect로 데이터 자동 저장/로드
 useEffect(() => {
-  // localStorage에서 데이터 불러오기
-  const savedCategories = localStorage.getItem('moneyNote_categories');
-  if (savedCategories) {
-    setCategories(JSON.parse(savedCategories));
-  }
-}, []); // 빈 배열 = 마운트 시 한 번만 실행
-```
-**MoneyNote 적용**: CategoryManager에서 저장된 카테고리 불러오기
+  let isCancelled = false; // cleanup을 위한 플래그
 
-### 3.2 상태 변화 감지 및 자동 저장
-```typescript
-useEffect(() => {
-  // categories가 변경될 때마다 localStorage에 저장
-  localStorage.setItem('moneyNote_categories', JSON.stringify(categories));
-}, [categories]); // categories 의존성 배열
-```
-**MoneyNote 적용**: 카테고리 변경 시 자동으로 브라우저에 저장
-
-### 3.3 모달/다이얼로그 상태 초기화
-```typescript
-useEffect(() => {
-  if (open) {
-    // 모달이 열릴 때 폼 초기화
-    if (mode === 'edit' && initialData) {
-      setFormData(initialData);
-    } else {
-      setFormData({ name: '', color: '', icon: '' });
+  const loadExpenses = async () => {
+    if (isCancelled) return;
+    
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const savedExpenses = LocalStorage.get('EXPENSES', []);
+      
+      if (isCancelled) return; // 비동기 작업 중 cleanup 체크
+      
+      // Date 객체로 안전하게 변환
+      const expenses = savedExpenses.map((expense: Expense) => ({
+        ...expense,
+        date: new Date(expense.date),
+        createdAt: new Date(expense.createdAt),
+        updatedAt: new Date(expense.updatedAt)
+      }));
+      
+      if (!isCancelled) {
+        dispatch({ type: 'SET_EXPENSES', payload: expenses });
+      }
+    } catch (error) {
+      if (!isCancelled) {
+        console.error('Failed to load expenses:', error);
+        dispatch({ type: 'SET_ERROR', payload: '데이터 로드 중 오류가 발생했습니다.' });
+      }
+    } finally {
+      if (!isCancelled) {
+        dispatch({ type: 'SET_LOADING', payload: false });
+      }
     }
+  };
+
+  loadExpenses();
+  
+  // 2025년 필수: cleanup 함수
+  return () => {
+    isCancelled = true;
+  };
+}, []);
+
+// 데이터 변경시 자동 저장
+useEffect(() => {
+  if (state.loading) return; // 초기 로드 중에는 저장하지 않음
+  
+  try {
+    LocalStorage.set('EXPENSES', state.expenses);
+  } catch (error) {
+    console.error('Failed to save expenses to localStorage:', error);
   }
-}, [open, mode, initialData]);
+}, [state.expenses, state.loading]);
 ```
-**MoneyNote 적용**: CategoryForm 열 때마다 적절한 초기값 설정
 
 ---
 
-## 📖 단원 4: TypeScript 타입 시스템
+## 📖 단원 6: 고급 폼 처리와 유효성 검증 (⚡ 고급)
 
-### 4.1 기본 인터페이스 정의
+### 6.1 복잡한 폼 데이터 관리
+
+**MoneyNote 지출 폼의 실제 구조**:
 ```typescript
-interface Expense {
-  id: string;
-  amount: number;
-  description: string;
-  categoryId: string;
-  subcategoryId?: string;
-  date: Date;
-  paymentMethod: string;
-  isFixed: boolean;
-  tags?: string[];
-}
-
-interface Category {
-  id: string;
-  name: string;
-  color: string;
-  icon?: string;
-  isDefault: boolean;
-  subcategories: Subcategory[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-**MoneyNote 적용**: 모든 데이터 구조를 타입으로 정의
-
-### 4.2 컴포넌트 Props 타입
-```typescript
-interface CategoryFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (data: CategoryFormData) => void;
-  initialData?: Category;
-  mode?: 'add' | 'edit';
-}
-```
-**MoneyNote 적용**: 모든 컴포넌트의 Props를 명확히 정의
-
-### 4.3 Union Types와 Optional 필드
-```typescript
-type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other';
-type ExpenseType = 'fixed' | 'variable';
-
+// ExpenseForm.tsx - 실제 구현된 복잡한 폼
 interface ExpenseFormData {
   amount: number;
+  category: string;
+  subcategory: string;
   description: string;
-  categoryId: string;
-  subcategoryId?: string; // 선택적 필드
   paymentMethod: PaymentMethod;
+  tags: string[];
   isFixed: boolean;
-  tags?: string[]; // 선택적 배열
+  date: Date;
+}
+
+function ExpenseForm({ initialData, onSubmit }: ExpenseFormProps) {
+  // 2025년 패턴: 지연 초기화 + nullish coalescing
+  const [formData, setFormData] = useState<ExpenseFormData>(() => ({
+    amount: initialData?.amount ?? 0,
+    category: initialData?.category ?? '',
+    subcategory: initialData?.subcategory ?? '',
+    description: initialData?.description ?? '',
+    paymentMethod: initialData?.paymentMethod ?? DEFAULT_PAYMENT_METHOD,
+    tags: initialData?.tags ?? [],
+    isFixed: initialData?.isFixed ?? false,
+    date: initialData?.date ?? new Date()
+  }));
+
+  // 입력창 변경 처리
+  const handleInputChange = (field: keyof ExpenseFormData) => 
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = field === 'amount' ? parseFloat(event.target.value) || 0 
+                   : field === 'isFixed' ? event.target.checked
+                   : event.target.value;
+
+      setFormData(prevData => ({
+        ...prevData,
+        [field]: value
+      }));
+
+      // 실시간 유효성 검증
+      if (errors[field]) {
+        const fieldError = validateField(field, value);
+        setErrors(prev => ({ ...prev, [field]: fieldError }));
+      }
+    };
+
+  return (
+    <Card>
+      <CardContent>
+        <Stack spacing={3}>
+          {/* 금액 입력 */}
+          <CurrencyInput
+            label="금액"
+            value={formData.amount}
+            onChange={handleInputChange('amount')}
+            error={!!errors.amount}
+            helperText={errors.amount}
+            required
+          />
+
+          {/* 카테고리 선택 */}
+          <CategorySelect
+            label="카테고리"
+            value={formData.category}
+            onChange={handleInputChange('category')}
+            categories={categories}
+            error={!!errors.category}
+            helperText={errors.category}
+            required
+          />
+
+          {/* 태그 관리 */}
+          <TagInput
+            selectedTags={formData.tags}
+            onTagsChange={(newTags) => 
+              setFormData(prev => ({ ...prev, tags: newTags }))
+            }
+          />
+          
+          {/* 고정비 여부 */}
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.isFixed}
+                onChange={handleInputChange('isFixed')}
+              />
+            }
+            label="고정비"
+          />
+        </Stack>
+      </CardContent>
+    </Card>
+  );
 }
 ```
-**MoneyNote 적용**: 결제수단 선택, 지출 유형 분류
+
+### 6.2 실무 수준 유효성 검증
+
+```typescript
+// utils/validators/expenseValidators.ts - 실제 구현된 검증 로직
+export const validateExpenseForm = (data: ExpenseFormData): ValidationResult => {
+  const errors: ValidationErrors = {};
+
+  // 금액 검증
+  if (!data.amount || data.amount <= 0) {
+    errors.amount = '금액을 올바르게 입력해주세요';
+  } else if (data.amount > 10000000) {
+    errors.amount = '금액이 너무 큽니다 (최대 1,000만원)';
+  }
+
+  // 카테고리 검증
+  if (!data.category.trim()) {
+    errors.category = '카테고리를 선택해주세요';
+  }
+
+  // 설명 검증
+  if (!data.description.trim()) {
+    errors.description = '설명을 입력해주세요';
+  } else if (data.description.length > 100) {
+    errors.description = '설명은 100자 이하로 입력해주세요';
+  }
+
+  // 날짜 검증
+  const today = new Date();
+  if (data.date > today) {
+    errors.date = '미래 날짜는 선택할 수 없습니다';
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+};
+
+// 실시간 필드별 검증
+export const validateField = (field: keyof ExpenseFormData, value: any): string | undefined => {
+  switch (field) {
+    case 'amount':
+      if (!value || value <= 0) return '금액을 올바르게 입력해주세요';
+      if (value > 10000000) return '금액이 너무 큽니다';
+      break;
+    
+    case 'category':
+      if (!value?.trim()) return '카테고리를 선택해주세요';
+      break;
+    
+    case 'description':
+      if (!value?.trim()) return '설명을 입력해주세요';
+      if (value.length > 100) return '설명은 100자 이하로 입력해주세요';
+      break;
+  }
+  
+  return undefined;
+};
+```
 
 ---
 
-## 📖 단원 5: Context API와 전역 상태 관리
+## 📖 단원 7: TypeScript 고급 타입 시스템 (⚡ 고급)
 
-### 5.1 Context 생성과 Provider 설정
+### 7.1 MoneyNote에서 사용하는 고급 타입 패턴
+
+**🔗 Union Types와 타입 가드**:
 ```typescript
-const ExpenseContext = createContext<ExpenseContextType | undefined>(undefined);
+// types/expense.types.ts - 실제 구현된 타입 시스템
+export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'DIGITAL_WALLET';
 
-export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, dispatch] = useReducer(expenseReducer, initialState);
-  
-  const addExpense = (expenseData: ExpenseFormData) => {
-    const newExpense: Expense = {
-      id: `exp-${Date.now()}`,
-      ...expenseData,
-      createdAt: new Date(),
-    };
-    dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
-  };
+export type ExpenseFilter = {
+  startDate?: Date;
+  endDate?: Date;
+  category?: string;
+  subcategory?: string;
+  paymentMethod?: PaymentMethod;
+  tags?: string[];
+  isFixed?: boolean;
+};
 
-  return (
-    <ExpenseContext.Provider value={{ state, addExpense }}>
-      {children}
-    </ExpenseContext.Provider>
-  );
+// 타입 가드 함수 (런타임에서 타입 안전성 보장)
+export const isValidPaymentMethod = (value: string): value is PaymentMethod => {
+  return ['CASH', 'CARD', 'TRANSFER', 'DIGITAL_WALLET'].includes(value);
 };
 ```
-**MoneyNote 적용**: 지출 데이터를 앱 전체에서 공유
 
-### 5.2 Custom Hook으로 Context 사용
+**🎯 Generic Types 활용**:
 ```typescript
+// utils/storage/localStorage.ts - 제네릭으로 타입 안전한 localStorage
+export class LocalStorage {
+  static get<T>(key: string, defaultValue: T): T {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : defaultValue;
+    } catch (error) {
+      console.error(`Failed to get ${key} from localStorage:`, error);
+      return defaultValue;
+    }
+  }
+
+  static set<T>(key: string, value: T): boolean {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (error) {
+      console.error(`Failed to set ${key} in localStorage:`, error);
+      return false;
+    }
+  }
+}
+
+// 사용 예시 - 타입이 자동으로 추론됨
+const expenses = LocalStorage.get<Expense[]>('EXPENSES', []); // Expense[] 타입
+const categories = LocalStorage.get<Category[]>('CATEGORIES', []); // Category[] 타입
+```
+
+**⚡ Utility Types 활용**:
+```typescript
+// ExpenseFormData는 Expense에서 일부 필드를 제외한 타입
+export type ExpenseFormData = Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>;
+
+// 부분적 업데이트를 위한 타입
+export type PartialExpenseUpdate = Partial<ExpenseFormData> & { id: string };
+
+// Context 상태에서 필수 필드 정의
+export type ExpenseState = {
+  expenses: Expense[];
+  loading: boolean;
+  error: string | null;
+  filter: ExpenseFilter;
+};
+
+// Action 타입에서 exhaustive check 지원
+export type ExpenseAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'ADD_EXPENSE'; payload: Expense }
+  | { type: 'UPDATE_EXPENSE'; payload: Expense }
+  | { type: 'DELETE_EXPENSE'; payload: string };
+```
+
+### 7.2 고급 TypeScript 패턴
+
+**🛡️ 방어적 타입 체크**:
+```typescript
+// Exhaustive check pattern (모든 케이스를 처리했는지 컴파일 타임에 체크)
+const expenseReducer = (state: ExpenseState, action: ExpenseAction): ExpenseState => {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload };
+    case 'ADD_EXPENSE':
+      return { ...state, expenses: [...state.expenses, action.payload] };
+    // ... 다른 케이스들
+    default:
+      // 만약 새로운 액션 타입을 추가하고 위에서 처리하지 않으면
+      // TypeScript가 컴파일 에러를 발생시킴
+      const exhaustiveCheck: never = action;
+      console.error('Unhandled action type:', exhaustiveCheck);
+      return state;
+  }
+};
+```
+
+---
+
+## 📖 단원 8: 커스텀 훅과 로직 분리 (⚡ 고급)
+
+### 8.1 실무에서 사용하는 커스텀 훅 패턴
+
+**MoneyNote에서 구현 가능한 커스텀 훅들**:
+
+```typescript
+// hooks/useExpenses.ts - 지출 관리 로직 분리
 export const useExpenses = () => {
   const context = useContext(ExpenseContext);
-  if (context === undefined) {
-    throw new Error('useExpenses must be used within an ExpenseProvider');
+  if (!context) {
+    throw new Error('useExpenses must be used within ExpenseProvider');
   }
-  return context;
-};
 
-// 컴포넌트에서 사용
-const ExpenseList: React.FC = () => {
-  const { state, addExpense, deleteExpense } = useExpenses();
-  const expenses = state.expenses;
-  // ...
-};
-```
-**MoneyNote 적용**: useExpenses, useCategories 훅으로 상태 접근
+  const { state, addExpense, updateExpense, deleteExpense, getFilteredExpenses } = context;
 
----
+  // 계산된 값들 (매번 계산하지 않도록 useMemo 활용)
+  const totalAmount = useMemo(() => 
+    state.expenses.reduce((sum, expense) => sum + expense.amount, 0), 
+    [state.expenses]
+  );
 
-## 📖 단원 6: 불변성과 배열/객체 업데이트
+  const monthlyTotal = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    return state.expenses
+      .filter(expense => 
+        expense.date.getMonth() === currentMonth && 
+        expense.date.getFullYear() === currentYear
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }, [state.expenses]);
 
-### 6.1 배열에 항목 추가
-```typescript
-// ❌ 원본 배열 변경 (잘못된 방법)
-categories.push(newCategory);
+  // 유용한 헬퍼 함수들
+  const getExpensesByCategory = useCallback((category: string) => 
+    state.expenses.filter(expense => expense.category === category),
+    [state.expenses]
+  );
 
-// ✅ 새 배열 생성 (올바른 방법)
-setCategories(prev => [...prev, newCategory]);
-```
+  const getFixedExpenses = useCallback(() => 
+    state.expenses.filter(expense => expense.isFixed),
+    [state.expenses]
+  );
 
-### 6.2 배열의 특정 항목 수정
-```typescript
-setCategories(prev =>
-  prev.map(category =>
-    category.id === editingCategory.id
-      ? { ...category, ...updatedData, updatedAt: new Date() }
-      : category
-  )
-);
-```
-**MoneyNote 적용**: 카테고리 수정 시 해당 카테고리만 업데이트
-
-### 6.3 중첩된 배열 업데이트 (소분류 수정)
-```typescript
-setCategories(prev =>
-  prev.map(category =>
-    category.id === targetCategoryId
-      ? {
-          ...category,
-          subcategories: category.subcategories.map(sub =>
-            sub.id === subcategoryId
-              ? { ...sub, ...updatedSubcategory }
-              : sub
-          )
-        }
-      : category
-  )
-);
-```
-**MoneyNote 적용**: 특정 대분류의 소분류 수정
-
----
-
-## 📖 단원 7: Material-UI와 스타일링
-
-### 7.1 기본 컴포넌트 사용
-```tsx
-import { 
-  Button, TextField, Paper, Stack, Box, 
-  Dialog, DialogTitle, DialogContent, DialogActions 
-} from '@mui/material';
-
-<Paper sx={{ p: 3, borderRadius: 2 }}>
-  <Stack spacing={2}>
-    <TextField 
-      label="카테고리명" 
-      value={name}
-      onChange={handleNameChange}
-      error={!!errors.name}
-      helperText={errors.name}
-    />
-    <Button variant="contained" onClick={handleSubmit}>
-      저장
-    </Button>
-  </Stack>
-</Paper>
-```
-
-### 7.2 sx prop을 활용한 스타일링
-```tsx
-<Box
-  sx={{
-    width: 48,
-    height: 48,
-    borderRadius: '50%',
-    backgroundColor: category.color,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    '&:hover': {
-      transform: 'scale(1.1)',
-      boxShadow: 2
-    }
-  }}
->
-```
-**MoneyNote 적용**: 카테고리 색상 선택기, 아이콘 버튼
-
-### 7.3 Stack vs Grid 레이아웃
-```tsx
-// ✅ Stack 사용 (권장)
-<Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-  {items.map(item => <Item key={item.id} />)}
-</Stack>
-
-// ❌ Grid 사용 (호환성 문제 발생)
-<Grid container spacing={2}>
-  <Grid item xs={6}>
-    <Item />
-  </Grid>
-</Grid>
-```
-**MoneyNote 적용**: Day 7에서 Grid 문제 해결 후 Stack 일관 사용
-
----
-
-## 📖 단원 8: 고급 패턴과 최적화
-
-### 8.1 Container/Presentational 패턴
-```typescript
-// Container 컴포넌트 (로직 담당)
-const CategoryManagerContainer: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
-  
-  const handleAddCategory = (data: CategoryFormData) => {
-    // 비즈니스 로직
+  return {
+    // 상태
+    expenses: state.expenses,
+    loading: state.loading,
+    error: state.error,
+    
+    // 계산된 값들
+    totalAmount,
+    monthlyTotal,
+    
+    // 액션 함수들
+    addExpense,
+    updateExpense,
+    deleteExpense,
+    getFilteredExpenses,
+    
+    // 헬퍼 함수들
+    getExpensesByCategory,
+    getFixedExpenses,
   };
-  
-  return (
-    <CategoryManagerPresentation 
-      categories={categories}
-      formOpen={formOpen}
-      onAddCategory={handleAddCategory}
-      onOpenForm={() => setFormOpen(true)}
-    />
-  );
-};
-
-// Presentation 컴포넌트 (UI 담당)
-const CategoryManagerPresentation: React.FC<Props> = ({
-  categories, formOpen, onAddCategory, onOpenForm
-}) => {
-  return (
-    <div>
-      <button onClick={onOpenForm}>추가</button>
-      {/* UI 렌더링 */}
-    </div>
-  );
 };
 ```
 
-### 8.2 상태 끌어올리기 (Lifting State Up)
+**🎯 폼 관리 커스텀 훅**:
 ```typescript
-// 상위 컴포넌트에서 상태 관리
-const CategoryManager: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  
-  return (
-    <div>
-      <CategoryList 
-        categories={categories}
-        onEditCategory={setEditingCategory}
-        onDeleteCategory={handleDeleteCategory}
-      />
-      <CategoryForm 
-        categories={categories}
-        onSubmit={handleCategorySubmit}
-      />
-    </div>
-  );
+// hooks/useForm.ts - 범용 폼 관리 훅
+export const useForm = <T extends Record<string, any>>(
+  initialValues: T,
+  validationSchema?: (values: T) => Record<keyof T, string | undefined>
+) => {
+  const [values, setValues] = useState<T>(initialValues);
+  const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof T, boolean>>>({});
+
+  const handleChange = useCallback(<K extends keyof T>(field: K) => 
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.type === 'checkbox' 
+        ? event.target.checked 
+        : event.target.value;
+
+      setValues(prevValues => ({
+        ...prevValues,
+        [field]: value
+      }));
+
+      // 실시간 유효성 검증
+      if (touched[field] && validationSchema) {
+        const fieldErrors = validationSchema({ ...values, [field]: value });
+        setErrors(prev => ({ ...prev, [field]: fieldErrors[field] }));
+      }
+    }, [values, touched, validationSchema]);
+
+  const handleBlur = useCallback(<K extends keyof T>(field: K) => () => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    
+    if (validationSchema) {
+      const fieldErrors = validationSchema(values);
+      setErrors(prev => ({ ...prev, [field]: fieldErrors[field] }));
+    }
+  }, [values, validationSchema]);
+
+  const validate = useCallback(() => {
+    if (!validationSchema) return true;
+    
+    const allErrors = validationSchema(values);
+    setErrors(allErrors);
+    
+    return Object.values(allErrors).every(error => !error);
+  }, [values, validationSchema]);
+
+  const reset = useCallback(() => {
+    setValues(initialValues);
+    setErrors({});
+    setTouched({});
+  }, [initialValues]);
+
+  return {
+    values,
+    errors,
+    touched,
+    handleChange,
+    handleBlur,
+    validate,
+    reset,
+    setValues,
+  };
 };
-```
-**MoneyNote 적용**: CategoryManager가 모든 하위 컴포넌트 상태 관리
 
-### 8.3 조건부 렌더링과 빈 상태 처리
-```tsx
-{loading ? (
-  <CircularProgress />
-) : categories.length === 0 ? (
-  <Paper sx={{ p: 4, textAlign: 'center' }}>
-    <Typography variant="h6" color="text.secondary">
-      카테고리가 없습니다
-    </Typography>
-    <Button startIcon={<AddIcon />} onClick={onAddCategory}>
-      첫 카테고리 추가하기
-    </Button>
-  </Paper>
-) : (
-  <CategoryList categories={categories} />
-)}
-```
-**MoneyNote 적용**: 빈 상태, 로딩 상태, 에러 상태 처리
+// ExpenseForm에서 사용 예시
+function ExpenseForm({ onSubmit }: { onSubmit: (data: ExpenseFormData) => void }) {
+  const { values, errors, handleChange, handleBlur, validate } = useForm<ExpenseFormData>(
+    {
+      amount: 0,
+      category: '',
+      description: '',
+      // ... 초기값들
+    },
+    validateExpenseForm  // 검증 함수
+  );
 
----
-
-## 📖 단원 9: 실전 적용 사례
-
-### 9.1 실시간 미리보기 구현
-```typescript
-const CategoryForm: React.FC = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    color: COLORS[0],
-    icon: ICONS[0]
-  });
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (validate()) {
+      onSubmit(values);
+    }
+  };
 
   return (
-    <div>
-      {/* 실시간 미리보기 */}
-      <Paper sx={{ 
-        background: `linear-gradient(135deg, ${alpha(formData.color, 0.1)}, ${alpha(formData.color, 0.05)})`,
-        border: `2px solid ${alpha(formData.color, 0.2)}`
-      }}>
-        <Box sx={{ backgroundColor: formData.color }}>
-          {formData.icon}
-        </Box>
-        <Typography color={formData.color}>
-          {formData.name || '카테고리명'}
-        </Typography>
-      </Paper>
-      
-      {/* 입력 폼 */}
-      <TextField 
-        value={formData.name}
-        onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+    <form onSubmit={handleSubmit}>
+      <input
+        value={values.amount}
+        onChange={handleChange('amount')}
+        onBlur={handleBlur('amount')}
       />
-    </div>
+      {errors.amount && <span>{errors.amount}</span>}
+    </form>
   );
-};
+}
 ```
-**MoneyNote 적용**: 사용자가 입력하는 즉시 결과 확인 가능
-
-### 9.2 계층형 데이터 렌더링
-```tsx
-const CategoryList: React.FC = () => {
-  const [expanded, setExpanded] = useState<string[]>([]);
-  
-  return (
-    <div>
-      {categories.map(category => (
-        <div key={category.id}>
-          {/* 대분류 */}
-          <div onClick={() => toggleExpanded(category.id)}>
-            <CategoryIcon color={category.color} />
-            <span>{category.name}</span>
-            {expanded.includes(category.id) ? <ExpandLess /> : <ExpandMore />}
-          </div>
-          
-          {/* 소분류 (접을 수 있음) */}
-          <Collapse in={expanded.includes(category.id)}>
-            {category.subcategories.map(sub => (
-              <div key={sub.id} style={{ paddingLeft: 48 }}>
-                <SubcategoryIcon color={sub.color || category.color} />
-                <span>{sub.name}</span>
-              </div>
-            ))}
-          </Collapse>
-        </div>
-      ))}
-    </div>
-  );
-};
-```
-**MoneyNote 적용**: 대분류-소분류 계층 구조 시각화
 
 ---
 
-## 🎓 핵심 정리
+## 🎯 총정리: 실무 적용 로드맵
 
-### React 핵심 개념
-1. **함수형 컴포넌트** - 모든 UI를 함수로 표현
-2. **Props** - 컴포넌트 간 데이터 전달
-3. **useState** - 컴포넌트 내부 상태 관리
-4. **useEffect** - 사이드 이펙트 처리 (API 호출, 구독 등)
+### 🔰 초급 단계 (1-2주차)
+**목표**: MoneyNote의 기본 구조 이해하고 간단한 수정 가능
 
-### 상태 관리 패턴
-1. **지역 상태** - useState로 컴포넌트 내부 관리
-2. **전역 상태** - Context API로 앱 전체 공유
-3. **상태 끌어올리기** - 공통 부모에서 상태 관리
-4. **불변성** - 기존 객체/배열을 변경하지 않고 새로 생성
+1. **함수형 컴포넌트 완전 이해**
+   - JSX 문법과 React 함수 선언 방식
+   - Props 전달과 상태 관리 (useState)
+   - 기본적인 이벤트 처리
 
-### TypeScript 활용
-1. **타입 정의** - 데이터 구조를 명확히 정의
-2. **인터페이스** - 컴포넌트 Props 타입 지정
-3. **Union Types** - 여러 가능한 값들 중 하나
-4. **Optional** - 선택적 필드 (?)
+2. **Material-UI 기초**
+   - 기본 컴포넌트 사용법 (Button, Card, Typography)
+   - sx prop을 이용한 스타일링
+   - 아이콘 사용법
 
-### 실전 개발 팁
-1. **컴포넌트 분리** - 작고 집중된 역할로 나누기
-2. **에러 처리** - 로딩, 에러, 빈 상태 고려
-3. **사용자 경험** - 실시간 피드백, 직관적 UI
-4. **성능 최적화** - 불필요한 리렌더링 방지
+**실습 과제**: 
+- 새로운 페이지 추가하기
+- 기존 카드 컴포넌트 스타일 수정하기
+- 간단한 버튼 이벤트 핸들러 작성하기
+
+### 🔥 중급 단계 (3-4주차)  
+**목표**: MoneyNote의 핵심 기능들을 이해하고 새로운 기능 추가 가능
+
+1. **Context API 활용**
+   - ExpenseContext와 CategoryContext 동작 원리 이해
+   - useContext로 전역 상태 사용하기
+   - Provider 패턴 이해
+
+2. **React Router 마스터**
+   - 중첩 라우팅과 Layout 컴포넌트
+   - 네비게이션과 Link 컴포넌트
+   - 동적 라우팅
+
+3. **고급 Form 처리**
+   - 복잡한 폼 상태 관리
+   - 실시간 유효성 검증
+   - 다양한 입력 타입 처리
+
+**실습 과제**:
+- 새로운 카테고리 추가 기능 구현
+- 필터링 기능 개선
+- 새로운 입력 필드 추가
+
+### ⚡ 고급 단계 (5-6주차)
+**목표**: MoneyNote 수준의 실무 품질 앱을 처음부터 만들 수 있음
+
+1. **성능 최적화**
+   - React.memo, useMemo, useCallback 활용
+   - 불필요한 렌더링 방지
+   - 메모리 누수 방지 패턴
+
+2. **TypeScript 고급 활용**
+   - 제네릭과 유틸리티 타입
+   - 타입 가드와 exhaustive check
+   - 고급 타입 시스템 설계
+
+3. **커스텀 훅 설계**
+   - 비즈니스 로직 분리
+   - 재사용 가능한 훅 작성
+   - 복잡한 상태 로직 추상화
+
+**실습 과제**:
+- 커스텀 훅으로 로직 분리하기
+- 성능 최적화 적용하기
+- 새로운 Context Provider 만들기
 
 ---
 
-## 🚀 다음 학습 로드맵
+## 🚀 다음 단계: 실무 준비
 
-MoneyNote를 완성하기 위해 추가로 학습할 개념들:
+### 추가 학습 권장 사항
+1. **테스팅**: Jest, React Testing Library
+2. **상태 관리**: Zustand, Redux Toolkit (더 큰 앱을 위한)
+3. **번들링 최적화**: 코드 스플리팅, Tree shaking
+4. **배포**: Vercel, Netlify 배포 경험
 
-### 고급 React 패턴
-- **React.memo** - 컴포넌트 메모이제이션
-- **useMemo/useCallback** - 계산 결과/함수 메모이제이션
-- **useReducer** - 복잡한 상태 로직 관리
-- **Custom Hooks** - 로직 재사용
-
-### 데이터 관리
-- **React Query** - 서버 상태 관리
-- **Zustand/Redux** - 클라이언트 상태 관리
-- **Form Libraries** - React Hook Form
-- **Validation** - Yup, Zod 라이브러리
-
-### 고급 UI/UX
-- **Animation** - Framer Motion
-- **Drag & Drop** - react-beautiful-dnd
-- **Charts** - Chart.js, Recharts
-- **Mobile** - PWA, Responsive Design
+### MoneyNote 확장 아이디어
+1. **차트 라이브러리 통합**: Chart.js, Recharts
+2. **PWA 기능**: 오프라인 지원, 푸시 알림
+3. **백엔드 연동**: API 통신, 인증 시스템
+4. **모바일 최적화**: 터치 제스처, 모바일 UX
 
 ---
 
-**출근길 파이팅! 🚀** 
-이 개념들이 MoneyNote에서 어떻게 실제 사용되었는지 코드로 확인해보세요!
+**🎓 학습 완료 기준**
+- [ ] MoneyNote의 모든 기능을 이해하고 설명할 수 있다
+- [ ] 새로운 기능을 독립적으로 추가할 수 있다  
+- [ ] 코드 리뷰를 통해 개선점을 찾을 수 있다
+- [ ] 2025년 React 최신 패턴을 적용할 수 있다
+- [ ] TypeScript를 활용한 타입 안전한 코드를 작성할 수 있다
+
+**총 학습 시간**: 약 40-60시간 (6주, 주 10시간)
+**학습 효과**: ⭐⭐⭐⭐⭐ React 실무 개발자 수준! 🎯✨
+
+출근길 복습을 통해 MoneyNote 수준의 고품질 React 앱을 만들 수 있는 개발자가 되어보세요! 🚀
+

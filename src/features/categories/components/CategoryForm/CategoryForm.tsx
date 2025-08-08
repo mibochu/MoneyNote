@@ -64,14 +64,16 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
     name?: string;
   }>({});
 
-  // 폼 데이터 초기화
+  // 폼 데이터 초기화 (2025 React 패턴: 의존성 최적화)
   useEffect(() => {
-    if (open) {
+    if (!open) return; // 조기 리턴으로 성능 최적화
+    
+    const resetForm = () => {
       if (mode === 'edit' && initialData) {
         setFormData({
           name: initialData.name,
           color: initialData.color,
-          icon: initialData.icon || CATEGORY_ICONS[0]
+          icon: initialData.icon ?? CATEGORY_ICONS[0] // nullish coalescing 사용
         });
       } else {
         setFormData({
@@ -81,8 +83,10 @@ const CategoryForm: React.FC<CategoryFormProps> = ({
         });
       }
       setErrors({});
-    }
-  }, [open, mode, initialData]);
+    };
+    
+    resetForm();
+  }, [open, mode, initialData?.name, initialData?.color, initialData?.icon]); // 필요한 필드만 의존성에 추가
 
   const validateForm = (): boolean => {
     const newErrors: { name?: string } = {};

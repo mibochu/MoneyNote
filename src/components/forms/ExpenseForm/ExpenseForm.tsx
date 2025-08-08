@@ -47,20 +47,20 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   isLoading = false,
   categories = []
 }) => {
-  // 폼 상태 관리
-  const [formData, setFormData] = useState<ExpenseFormData>({
-    amount: initialData?.amount || 0,
-    category: initialData?.category || '',
-    subcategory: initialData?.subcategory || '',
-    description: initialData?.description || '',
-    paymentMethod: initialData?.paymentMethod || DEFAULT_PAYMENT_METHOD,
-    tags: initialData?.tags || [],
-    isFixed: initialData?.isFixed || false,
-    date: initialData?.date || new Date()
-  });
+  // 폼 상태 관리 (2025 React 패턴: 지연 초기화)
+  const [formData, setFormData] = useState<ExpenseFormData>(() => ({
+    amount: initialData?.amount ?? 0,
+    category: initialData?.category ?? '',
+    subcategory: initialData?.subcategory ?? '',
+    description: initialData?.description ?? '',
+    paymentMethod: initialData?.paymentMethod ?? DEFAULT_PAYMENT_METHOD,
+    tags: initialData?.tags ?? [],
+    isFixed: initialData?.isFixed ?? false,
+    date: initialData?.date ?? new Date()
+  }));
 
   // 에러 상태 관리
-  const [errors, setErrors] = useState<Partial<Record<keyof ExpenseFormData, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof ExpenseFormData, string>>>(() => ({}));
 
   // 태그 입력 상태
   const [tagInput, setTagInput] = useState('');

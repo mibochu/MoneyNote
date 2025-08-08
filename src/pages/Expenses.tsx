@@ -33,15 +33,11 @@ const Expenses: React.FC = () => {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
   const [filter, setFilter] = useState<ExpenseFilter>({});
-  const [notification, setNotification] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error' | 'warning' | 'info';
-  }>({
+  const [notification, setNotification] = useState(() => ({
     open: false,
     message: '',
-    severity: 'success'
-  });
+    severity: 'success' as const
+  }));
 
   const expenses = state.expenses || [];
 
@@ -92,12 +88,14 @@ const Expenses: React.FC = () => {
     }
   };
 
+  // 2025 React 패턴: 함수형 상태 업데이트 사용
   const showNotification = (message: string, severity: typeof notification.severity) => {
-    setNotification({
+    setNotification(prev => ({
+      ...prev,
       open: true,
       message,
       severity
-    });
+    }));
   };
 
   const handleCloseNotification = () => {

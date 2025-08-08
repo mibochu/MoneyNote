@@ -23,6 +23,26 @@ import {
 } from '@mui/icons-material';
 
 import type { Category, Subcategory, CategoryFormData, SubcategoryFormData } from '../../../../types';
+
+// 초기 카테고리 생성 함수 (2025 React 패턴: 지연 초기화)
+const createInitialCategories = (): Category[] => {
+  const savedCategories = localStorage.getItem('moneyNote_categories');
+  if (savedCategories) {
+    try {
+      return JSON.parse(savedCategories);
+    } catch (error) {
+      console.error('Failed to parse saved categories:', error);
+      // 파싱 실패 시 기본값으로 fallback
+    }
+  }
+  // 기본 카테고리 초기화
+  return DEFAULT_CATEGORIES.map((cat, index) => ({
+    ...cat,
+    id: `cat-${index + 1}`,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }));
+};
 import { DEFAULT_CATEGORIES } from '../../../../utils/constants/categories';
 import { CategoryForm } from '../CategoryForm';
 import { SubcategoryForm } from '../SubcategoryForm';
@@ -63,19 +83,7 @@ const CategoryManager: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   
   // 카테고리 데이터 상태
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const savedCategories = localStorage.getItem('moneyNote_categories');
-    if (savedCategories) {
-      return JSON.parse(savedCategories);
-    }
-    // 기본 카테고리 초기화
-    return DEFAULT_CATEGORIES.map((cat, index) => ({
-      ...cat,
-      id: `cat-${index + 1}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }));
-  });
+  const [categories, setCategories] = useState<Category[]>(createInitialCategories);
 
   // UI 상태 관리
   const [snackbar, setSnackbar] = useState<{
@@ -95,10 +103,16 @@ const CategoryManager: React.FC = () => {
   const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null);
   const [preselectedCategoryId, setPreselectedCategoryId] = useState<string>('');
 
-  // localStorage에 카테고리 저장
+  // localStorage에 카테고리 저장 (2025 React 패턴: 에러 처리 강화)
   useEffect(() => {
-    localStorage.setItem('moneyNote_categories', JSON.stringify(categories));
-  }, [categories]);
+    try {
+      localStorage.setItem('moneyNote_categories', JSON.stringify(categories));
+    } catch (error) {
+      console.error('Failed to save categories to localStorage:', error);
+      // localStorage 공간 부족 등의 이유로 저장 실패 가능
+      showSnackbar('카테고리 저장 중 오류가 발생했습니다.', 'error');
+    }
+  }, [categories]); // 의존성 배열에는 categories만 필요
 
   // 통계 데이터 계산
   const statistics = useMemo(() => {
@@ -124,12 +138,14 @@ const CategoryManager: React.FC = () => {
     setTabValue(newValue);
   };
 
+  // 2025 React 패턴: 함수형 상태 업데이트
   const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' = 'success') => {
-    setSnackbar({
+    setSnackbar(prev => ({
+      ...prev,
       open: true,
       message,
       severity
-    });
+    }));
   };
 
   const handleCloseSnackbar = () => {
@@ -155,19 +171,21 @@ const CategoryManager: React.FC = () => {
         return;
       }
       
-      setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+      setCategories(prevCategories => 
+        prevCategories.filter(category => category.id !== categoryId)
+      );
       showSnackbar('카테고리가 삭제되었습니다', 'success');
     }
   };
 
   const handleCategorySubmit = (data: CategoryFormData) => {
     if (editingCategory) {
-      // 수정
-      setCategories(prev =>
-        prev.map(cat =>
-          cat.id === editingCategory.id
-            ? { ...cat, ...data, updatedAt: new Date() }
-            : cat
+      // 수정 (2025 React 패턴: 명확한 변수명 사용)
+      setCategories(prevCategories =>
+        prevCategories.map(category =>
+          category.id === editingCategory.id
+            ? { ...category, ...data, updatedAt: new Date() }
+            : category
         )
       );
       showSnackbar('카테고리가 수정되었습니다', 'success');
@@ -181,7 +199,7 @@ const CategoryManager: React.FC = () => {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      setCategories(prev => [...prev, newCategory]);
+      setCategories(prevCategories => [...prevCategories, newCategory]);
       showSnackbar('새 카테고리가 추가되었습니다', 'success');
     }
   };
@@ -208,15 +226,15 @@ const CategoryManager: React.FC = () => {
       return;
     }
 
-    setCategories(prev =>
-      prev.map(cat =>
-        cat.id === categoryId
+    setCategories(prevCategories =>
+      prevCategories.map(category =>
+        category.id === categoryId
           ? {
-              ...cat,
-              subcategories: cat.subcategories.filter(sub => sub.id !== subcategoryId),
+              ...category,
+              subcategories: category.subcategories.filter(subcategory => subcategory.id !== subcategoryId),
               updatedAt: new Date()
             }
-          : cat
+          : category
       )
     );
     showSnackbar('소분류가 삭제되었습니다', 'success');
@@ -224,20 +242,20 @@ const CategoryManager: React.FC = () => {
 
   const handleSubcategorySubmit = (data: SubcategoryFormData) => {
     if (editingSubcategory) {
-      // 수정
-      setCategories(prev =>
-        prev.map(cat =>
-          cat.id === data.categoryId
+      // 수정 (2025 React 패턴: 중첩 배열 불변성 업데이트)
+      setCategories(prevCategories =>
+        prevCategories.map(category =>
+          category.id === data.categoryId
             ? {
-                ...cat,
-                subcategories: cat.subcategories.map(sub =>
-                  sub.id === editingSubcategory.id
-                    ? { ...sub, ...data, updatedAt: new Date() }
-                    : sub
+                ...category,
+                subcategories: category.subcategories.map(subcategory =>
+                  subcategory.id === editingSubcategory.id
+                    ? { ...subcategory, ...data, updatedAt: new Date() }
+                    : subcategory
                 ),
                 updatedAt: new Date()
               }
-            : cat
+            : category
         )
       );
       showSnackbar('소분류가 수정되었습니다', 'success');
@@ -251,15 +269,15 @@ const CategoryManager: React.FC = () => {
         updatedAt: new Date()
       };
       
-      setCategories(prev =>
-        prev.map(cat =>
-          cat.id === data.categoryId
+      setCategories(prevCategories =>
+        prevCategories.map(category =>
+          category.id === data.categoryId
             ? {
-                ...cat,
-                subcategories: [...cat.subcategories, newSubcategory],
+                ...category,
+                subcategories: [...category.subcategories, newSubcategory],
                 updatedAt: new Date()
               }
-            : cat
+            : category
         )
       );
       showSnackbar('새 소분류가 추가되었습니다', 'success');
