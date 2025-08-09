@@ -32,6 +32,7 @@ import {
 import type { Expense } from '../../../../types';
 import { PAYMENT_METHODS } from '../../../../utils/constants/paymentMethods';
 import { useCategories } from '../../../../hooks/useCategories';
+import { formatResponsiveCurrency } from '../../../../utils/formatters/currency';
 
 export interface ExpenseItemProps {
   expense: Expense;
@@ -148,14 +149,14 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleItemClick}
     >
-      <CardContent sx={{ p: compact ? 1.5 : 2, '&:last-child': { pb: compact ? 1.5 : 2 } }}>
+      <CardContent sx={{ p: compact ? 2 : 3, '&:last-child': { pb: compact ? 2 : 3 } }}>
         {/* 메인 컨텐츠 */}
         <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {/* 첫 번째 줄: 설명과 금액 */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
               <Typography
-                variant="body1"
+                variant="h6"
                 fontWeight="medium"
                 sx={{
                   flex: 1,
@@ -163,7 +164,8 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
-                  mr: 1
+                  mr: 1,
+                  fontSize: '1.1rem'
                 }}
               >
                 {expense.description}
@@ -184,12 +186,12 @@ const ExpenseItem: React.FC<ExpenseItemProps> = ({
                   />
                 )}
                 <Typography
-                  variant="h6"
+                  variant="h5"
                   color={expense.isFixed ? "warning.dark" : "error.main"}
                   fontWeight="bold"
-                  sx={{ flexShrink: 0 }}
+                  sx={{ flexShrink: 0, fontSize: '1.25rem' }}
                 >
-                  -₩{expense.amount.toLocaleString()}
+                  -{formatResponsiveCurrency(expense.amount)}
                 </Typography>
               </Box>
             </Box>

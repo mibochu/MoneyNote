@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>큰 금액 UI 테스트</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            width: 250px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .amount {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .compact {
+            color: #1976d2;
+        }
+        .normal {
+            color: #dc004e;
+        }
+        h3 {
+            margin-top: 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>💰 큰 금액 UI 테스트</h1>
+    
+    <div class="card">
+        <h3>일반 포맷</h3>
+        <div class="amount normal" id="normal-small"></div>
+        <div class="amount normal" id="normal-medium"></div>
+        <div class="amount normal" id="normal-large"></div>
+        <div class="amount normal" id="normal-huge"></div>
+    </div>
+    
+    <div class="card">
+        <h3>축약 포맷</h3>
+        <div class="amount compact" id="compact-small"></div>
+        <div class="amount compact" id="compact-medium"></div>
+        <div class="amount compact" id="compact-large"></div>
+        <div class="amount compact" id="compact-huge"></div>
+    </div>
+    
+    <div class="card">
+        <h3>반응형 포맷</h3>
+        <div class="amount" id="responsive-small" style="color: #4caf50;"></div>
+        <div class="amount" id="responsive-medium" style="color: #4caf50;"></div>
+        <div class="amount" id="responsive-large" style="color: #4caf50;"></div>
+        <div class="amount" id="responsive-huge" style="color: #4caf50;"></div>
+    </div>
+
+    <script>
+        // 통화 포맷팅 함수들을 JavaScript로 구현
+        function formatCurrency(amount, options = {}) {
+            const { compact = false, showSymbol = true } = options;
+            
+            if (compact) {
+                return formatCompactCurrency(amount, showSymbol);
+            }
+            
+            const formatter = new Intl.NumberFormat('ko-KR', {
+                style: showSymbol ? 'currency' : 'decimal',
+                currency: 'KRW'
+            });
+            
+            return formatter.format(amount);
+        }
+        
+        function formatCompactCurrency(amount, showSymbol = true) {
+            const absAmount = Math.abs(amount);
+            const symbol = showSymbol ? '₩' : '';
+            const sign = amount < 0 ? '-' : '';
+            
+            if (absAmount >= 100000000) {
+                const eok = (absAmount / 100000000).toFixed(1);
+                return `${sign}${symbol}${eok}억`;
+            } else if (absAmount >= 10000) {
+                const man = (absAmount / 10000).toFixed(1);
+                return `${sign}${symbol}${man}만`;
+            } else if (absAmount >= 1000) {
+                const cheon = (absAmount / 1000).toFixed(1);
+                return `${sign}${symbol}${cheon}천`;
+            } else {
+                return `${sign}${symbol}${absAmount.toLocaleString()}`;
+            }
+        }
+        
+        function formatResponsiveCurrency(amount, screenSize = 'md') {
+            if (screenSize === 'xs' || screenSize === 'sm') {
+                return formatCurrency(amount, { compact: true });
+            }
+            
+            if (Math.abs(amount) >= 10000000) {
+                return formatCurrency(amount, { compact: true });
+            }
+            
+            return formatCurrency(amount);
+        }
+        
+        // 테스트 금액들
+        const amounts = [
+            50000,      // 5만원
+            2350000,    // 235만원  
+            100000000,  // 1억원
+            1500000000  // 15억원
+        ];
+        
+        // 일반 포맷
+        document.getElementById('normal-small').textContent = formatCurrency(amounts[0]);
+        document.getElementById('normal-medium').textContent = formatCurrency(amounts[1]);
+        document.getElementById('normal-large').textContent = formatCurrency(amounts[2]);
+        document.getElementById('normal-huge').textContent = formatCurrency(amounts[3]);
+        
+        // 축약 포맷
+        document.getElementById('compact-small').textContent = formatCurrency(amounts[0], { compact: true });
+        document.getElementById('compact-medium').textContent = formatCurrency(amounts[1], { compact: true });
+        document.getElementById('compact-large').textContent = formatCurrency(amounts[2], { compact: true });
+        document.getElementById('compact-huge').textContent = formatCurrency(amounts[3], { compact: true });
+        
+        // 반응형 포맷
+        document.getElementById('responsive-small').textContent = formatResponsiveCurrency(amounts[0]);
+        document.getElementById('responsive-medium').textContent = formatResponsiveCurrency(amounts[1]);
+        document.getElementById('responsive-large').textContent = formatResponsiveCurrency(amounts[2]);
+        document.getElementById('responsive-huge').textContent = formatResponsiveCurrency(amounts[3]);
+        
+        console.log('🧪 금액 포맷 테스트 결과:');
+        amounts.forEach(amount => {
+            console.log(`${amount.toLocaleString()}원:`);
+            console.log(`  일반: ${formatCurrency(amount)}`);
+            console.log(`  축약: ${formatCurrency(amount, { compact: true })}`);
+            console.log(`  반응형: ${formatResponsiveCurrency(amount)}`);
+            console.log('---');
+        });
+    </script>
+</body>
+</html>

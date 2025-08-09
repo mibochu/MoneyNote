@@ -3,6 +3,7 @@
 import React, { createContext, useReducer, useEffect } from 'react';
 import type { Expense, ExpenseFormData, ExpenseFilter } from '../types';
 import { LocalStorage } from '../utils/storage/localStorage';
+import { autoBackupManager } from '../utils/storage/autoBackup';
 
 // State 타입 정의
 interface ExpenseState {
@@ -25,7 +26,7 @@ type ExpenseAction =
 // Context 타입 정의
 interface ExpenseContextType {
   state: ExpenseState;
-  addExpense: (expenseData: ExpenseFormData) => void;
+  addExpense: (expenseData: ExpenseFormData) => string;
   updateExpense: (id: string, expenseData: ExpenseFormData) => void;
   deleteExpense: (id: string) => void;
   setFilter: (filter: ExpenseFilter) => void;
@@ -77,7 +78,7 @@ const expenseReducer = (state: ExpenseState, action: ExpenseAction): ExpenseStat
       }
       return { ...state, expenses: [...state.expenses, action.payload], error: null };
     
-    case 'UPDATE_EXPENSE':
+    case 'UPDATE_EXPENSE': {
       const expenseExists = state.expenses.some(expense => expense.id === action.payload.id);
       if (!expenseExists) {
         console.warn('Cannot update expense: ID not found:', action.payload.id);
@@ -90,8 +91,9 @@ const expenseReducer = (state: ExpenseState, action: ExpenseAction): ExpenseStat
         ),
         error: null
       };
+    }
     
-    case 'DELETE_EXPENSE':
+    case 'DELETE_EXPENSE': {
       const expensesToDelete = state.expenses.filter(expense => expense.id !== action.payload);
       // 삭제할 아이템이 없으면 기존 state 반환
       if (expensesToDelete.length === state.expenses.length) {
@@ -99,15 +101,17 @@ const expenseReducer = (state: ExpenseState, action: ExpenseAction): ExpenseStat
         return state;
       }
       return { ...state, expenses: expensesToDelete, error: null };
+    }
     
     case 'SET_FILTER':
       return { ...state, filter: action.payload };
     
-    default:
+    default: {
       // TypeScript에서 exhaustive check를 위한 패턴
       const exhaustiveCheck: never = action;
       console.error('Unhandled action type:', exhaustiveCheck);
       return state;
+    }
   }
 };
 
@@ -162,13 +166,32 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, []); // 빈 의존성 배열: 마운트시에만 실행
 
-  // 지출 데이터 변경 시 localStorage에 저장 (2025 React 패턴: debounce 및 에러 처리)
+  // 지출 데이터 변경 시 localStorage에 저장 및 백업 (2025 React 패턴: debounce 및 에러 처리)
   useEffect(() => {
     // 초기 로드 중에는 저장하지 않음
     if (state.loading) return;
     
     try {
       LocalStorage.set('EXPENSES', state.expenses);
+      
+      // 데이터 변경 시 즉시 백업 (debounce 적용)
+      if (state.expenses.length > 0) {
+        const timeoutId = setTimeout(async () => {
+          try {
+            console.log('💾 지출 데이터 변경됨 - 백업 생성 중...');
+            const success = await autoBackupManager.createAutoBackup();
+            if (success) {
+              console.log('✅ 지출 데이터 백업 완료');
+            } else {
+              console.log('❌ 지출 데이터 백업 실패');
+            }
+          } catch (error) {
+            console.warn('⚠️ 지출 데이터 백업 오류:', error);
+          }
+        }, 3000); // 3초 후 백업 (사용자가 연속으로 입력할 때 대기)
+        
+        return () => clearTimeout(timeoutId);
+      }
     } catch (error) {
       console.error('Failed to save expenses to localStorage:', error);
       // 저장 실패시 사용자에게 알리지 않음 (비항적이지 않음)
@@ -176,12 +199,12 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [state.expenses, state.loading]); // state.loading도 의존성에 추가
 
   // 지출 추가 (2025 React 패턴: 에러 처리 및 유효성 검증)
-  const addExpense = (expenseData: ExpenseFormData) => {
+  const addExpense = (expenseData: ExpenseFormData): string => {
     try {
       // 기본 유효성 검증
       if (!expenseData.description || expenseData.amount <= 0) {
         dispatch({ type: 'SET_ERROR', payload: '유효하지 않은 지출 데이터입니다.' });
-        return;
+        return '';
       }
       
       const now = new Date();
@@ -200,11 +223,12 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // 유효하지 않은 날짜인지 확인
       if (isNaN(expenseDate.getTime())) {
         dispatch({ type: 'SET_ERROR', payload: '유효하지 않은 날짜입니다.' });
-        return;
+        return '';
       }
       
+      const expenseId = `exp-${now.getTime()}`;
       const newExpense: Expense = {
-        id: `exp-${now.getTime()}`, // 더 안전한 ID 생성
+        id: expenseId, // 더 안전한 ID 생성
         ...expenseData,
         date: expenseDate, // 명시적으로 Date 객체로 설정
         createdAt: now,
@@ -213,9 +237,11 @@ export const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       console.log('Adding new expense:', newExpense); // 디버깅용 로그
       dispatch({ type: 'ADD_EXPENSE', payload: newExpense });
+      return expenseId;
     } catch (error) {
       console.error('Failed to add expense:', error);
       dispatch({ type: 'SET_ERROR', payload: '지출 추가 중 오류가 발생했습니다.' });
+      return '';
     }
   };
 

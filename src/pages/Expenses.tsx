@@ -2,35 +2,84 @@ import React, { useState } from 'react';
 import {
   Box,
   Typography,
-  Paper,
   Dialog,
   DialogTitle,
   DialogContent,
   IconButton,
-  Stack,
   Alert,
-  Snackbar
+  Snackbar,
+  Button,
+  Card,
+  CardContent,
+  Tabs,
+  Tab,
+  Paper
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Receipt,
+  AccountBalance,
+  TrendingUp,
+  Schedule as ScheduleIcon
 } from '@mui/icons-material';
 
-import { Fab } from '../components/ui/Button';
 import { ExpenseFormContainer } from '../components/forms/ExpenseForm';
+import { ExpectedExpenseForm } from '../components/forms/ExpectedExpenseForm';
+import { ExpectedExpenseList } from '../components/common/ExpectedExpenseList';
 import ExpenseList from '../features/expenses/components/ExpenseList';
 import ExpenseEditDialog from '../features/expenses/components/ExpenseEditDialog';
 import ExpenseDeleteConfirmDialog from '../features/expenses/components/ExpenseDeleteConfirmDialog';
 import { useExpenses } from '../hooks/useExpenses';
+import { useExpectedExpenses } from '../context/ExpectedExpenseContext';
+import { formatResponsiveCurrency } from '../utils/formatters/currency';
 
-import type { Expense, ExpenseFilter } from '../types';
+import type { Expense, ExpenseFilter, ExpectedExpense, ExpectedExpenseFormData } from '../types';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`expense-tabpanel-${index}`}
+      aria-labelledby={`expense-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ pt: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 const Expenses: React.FC = () => {
-  const { state, deleteExpense, updateExpense } = useExpenses();
+  const { state, deleteExpense, updateExpense, addExpense } = useExpenses();
+  const { 
+    state: expectedState, 
+    addExpectedExpense, 
+    updateExpectedExpense, 
+    deleteExpectedExpense, 
+    activateExpectedExpense,
+    getFilteredExpectedExpenses
+    // getExpectedExpenseStats // 미사용으로 주석 처리
+  } = useExpectedExpenses();
   
   // 상태 관리
+  const [tabValue, setTabValue] = useState(0);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isExpectedFormOpen, setIsExpectedFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editingExpectedExpense, setEditingExpectedExpense] = useState<ExpectedExpense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
   const [filter, setFilter] = useState<ExpenseFilter>({});
   const [notification, setNotification] = useState<{
@@ -44,6 +93,8 @@ const Expenses: React.FC = () => {
   });
 
   const expenses = state.expenses || [];
+  const expectedExpenses = getFilteredExpectedExpenses();
+  // const expectedStats = getExpectedExpenseStats(); // 미사용으로 주석 처리
 
   // 이번 달 통계 계산
   const currentMonth = new Date();
@@ -56,6 +107,16 @@ const Expenses: React.FC = () => {
   const monthlyTotal = monthlyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const monthlyFixed = monthlyExpenses
     .filter(expense => expense.isFixed)
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  
+  // 예상 지출 통계 (이번 달 미완료)
+  const monthlyExpectedTotal = expectedExpenses
+    .filter(expense => {
+      const expenseDate = new Date(expense.expectedDate);
+      return !expense.isActivated &&
+             expenseDate.getFullYear() === currentMonth.getFullYear() &&
+             expenseDate.getMonth() === currentMonth.getMonth();
+    })
     .reduce((sum, expense) => sum + expense.amount, 0);
 
   // 이벤트 핸들러들
@@ -92,6 +153,82 @@ const Expenses: React.FC = () => {
     }
   };
 
+  // 예상 지출 핸들러들
+  const handleExpectedExpenseAdd = (data: ExpectedExpenseFormData) => {
+    try {
+      addExpectedExpense(data);
+      showNotification('예상 지출이 등록되었습니다.', 'success');
+      setIsExpectedFormOpen(false);
+    } catch (error) {
+      showNotification('예상 지출 등록 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  const handleExpectedExpenseEdit = (expense: ExpectedExpense) => {
+    setEditingExpectedExpense(expense);
+    setIsExpectedFormOpen(true);
+  };
+
+  const handleExpectedExpenseUpdate = (data: ExpectedExpenseFormData) => {
+    if (!editingExpectedExpense) return;
+    
+    try {
+      updateExpectedExpense(editingExpectedExpense.id, data);
+      showNotification('예상 지출이 수정되었습니다.', 'success');
+      setEditingExpectedExpense(null);
+      setIsExpectedFormOpen(false);
+    } catch (error) {
+      showNotification('예상 지출 수정 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  const handleExpectedExpenseDelete = (expenseId: string) => {
+    try {
+      deleteExpectedExpense(expenseId);
+      showNotification('예상 지출이 삭제되었습니다.', 'success');
+    } catch (error) {
+      showNotification('예상 지출 삭제 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  const handleExpectedExpenseActivate = (expectedExpense: ExpectedExpense) => {
+    try {
+      // 실제 지출로 전환
+      const expenseData = {
+        amount: expectedExpense.amount,
+        category: expectedExpense.category,
+        subcategory: expectedExpense.subcategory || '',
+        description: expectedExpense.description,
+        paymentMethod: expectedExpense.paymentMethod,
+        tags: expectedExpense.tags,
+        isFixed: false,
+        date: new Date() // 현재 날짜로 설정
+      };
+      
+      const expenseId = addExpense(expenseData);
+      
+      if (expenseId) {
+        // 예상 지출을 활성화 상태로 변경
+        activateExpectedExpense(expectedExpense.id, expenseId);
+      } else {
+        throw new Error('지출 추가에 실패했습니다.');
+      }
+      
+      showNotification('예상 지출이 실제 지출로 전환되었습니다.', 'success');
+    } catch (error) {
+      showNotification('지출 전환 중 오류가 발생했습니다.', 'error');
+    }
+  };
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  const handleCloseExpectedForm = () => {
+    setIsExpectedFormOpen(false);
+    setEditingExpectedExpense(null);
+  };
+
   // 2025 React 패턴: 함수형 상태 업데이트 사용
   const showNotification = (message: string, severity: typeof notification.severity) => {
     setNotification(prev => ({
@@ -108,82 +245,177 @@ const Expenses: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        💳 지출 관리
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        지출 내역을 관리하고 분석하세요
-      </Typography>
-
-      {/* 월별 요약 카드 */}
-      <Paper sx={{ mb: 3 }}>
-        <Box sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            이번 달 지출 현황 ({currentMonth.getMonth() + 1}월)
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom>
+            💳 지출 관리
           </Typography>
-          
-          <Stack direction="row" spacing={4} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Box>
-              <Typography variant="h4" color="error" fontWeight="bold">
-                ₩{monthlyTotal.toLocaleString()}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                총 지출
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            지출 내역을 관리하고 분석하세요
+          </Typography>
+        </Box>
+        
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setIsFormOpen(true)}
+            sx={{ px: 3, height: 'fit-content' }}
+          >
+            지출 추가
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<ScheduleIcon />}
+            onClick={() => setIsExpectedFormOpen(true)}
+            sx={{ px: 3, height: 'fit-content' }}
+          >
+            예상 지출 등록
+          </Button>
+        </Box>
+      </Box>
+
+      {/* 요약 카드 - 수입관리와 동일한 스타일 */}
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1fr 1fr 1fr 1fr' },
+        gap: 3,
+        mb: 3
+      }}>        
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <Receipt color="error" />
+              <Typography variant="h6" sx={{ ml: 1 }}>
+                이번 달 총 지출
               </Typography>
             </Box>
-            
-            <Box>
-              <Typography variant="h5" color="warning.main" fontWeight="medium">
-                ₩{monthlyFixed.toLocaleString()}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
+            <Typography 
+              variant="h4" 
+              color="error"
+              sx={{
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
+                fontWeight: 700
+              }}
+            >
+              {formatResponsiveCurrency(monthlyTotal)}
+            </Typography>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <AccountBalance color="warning" />
+              <Typography variant="h6" sx={{ ml: 1 }}>
                 고정 지출
               </Typography>
             </Box>
-            
-            <Box>
-              <Typography variant="h5" color="info.main" fontWeight="medium">
-                ₩{(monthlyTotal - monthlyFixed).toLocaleString()}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
+            <Typography 
+              variant="h4" 
+              color="warning.main"
+              sx={{
+                fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+                fontWeight: 600
+              }}
+            >
+              {formatResponsiveCurrency(monthlyFixed)}
+            </Typography>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <TrendingUp color="info" />
+              <Typography variant="h6" sx={{ ml: 1 }}>
                 변동 지출
               </Typography>
             </Box>
-            
-            <Box>
-              <Typography variant="h6" color="text.primary">
-                {monthlyExpenses.length}건
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                총 거래
+            <Typography 
+              variant="h4" 
+              color="info.main"
+              sx={{
+                fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+                fontWeight: 600
+              }}
+            >
+              {formatResponsiveCurrency(monthlyTotal - monthlyFixed)}
+            </Typography>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <ScheduleIcon color="warning" />
+              <Typography variant="h6" sx={{ ml: 1 }}>
+                예상 지출
               </Typography>
             </Box>
-          </Stack>
-        </Box>
+            <Typography 
+              variant="h4" 
+              color="warning.main"
+              sx={{
+                fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+                fontWeight: 600
+              }}
+            >
+              {formatResponsiveCurrency(monthlyExpectedTotal)}
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* 탭 네비게이션 */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          aria-label="지출 관리 탭"
+          variant="fullWidth"
+          sx={{
+            '& .MuiTab-root': {
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              fontWeight: 600,
+              minHeight: { xs: 48, sm: 56 },
+              px: { xs: 2, sm: 3 }
+            }
+          }}
+        >
+          <Tab label="실제 지출" />
+          <Tab 
+            label={`예상 지출 ${expectedExpenses.filter(e => !e.isActivated).length ? `(${expectedExpenses.filter(e => !e.isActivated).length})` : ''}`} 
+          />
+        </Tabs>
       </Paper>
 
-      {/* 지출 목록 */}
-      <ExpenseList
-        expenses={expenses}
-        loading={state.loading}
-        error={state.error}
-        onExpenseEdit={handleExpenseEdit}
-        onExpenseDelete={handleExpenseDelete}
-        filter={filter}
-        onFilterChange={setFilter}
-        showHeader={true}
-        emptyMessage="아직 지출 내역이 없습니다"
-      />
+      {/* 탭 콘텐츠 */}
+      <TabPanel value={tabValue} index={0}>
+        <ExpenseList
+          expenses={expenses}
+          loading={state.loading}
+          error={state.error}
+          onExpenseEdit={handleExpenseEdit}
+          onExpenseDelete={handleExpenseDelete}
+          filter={filter}
+          onFilterChange={setFilter}
+          showHeader={true}
+          emptyMessage="아직 지출 내역이 없습니다"
+        />
+      </TabPanel>
 
-      {/* 지출 추가 플로팅 버튼 */}
-      <Fab
-        color="primary"
-        sx={{ position: 'fixed', bottom: 80, right: 16 }}
-        tooltip="지출 추가"
-        onClick={() => setIsFormOpen(true)}
-      >
-        <AddIcon />
-      </Fab>
+      <TabPanel value={tabValue} index={1}>
+        <ExpectedExpenseList
+          expectedExpenses={expectedExpenses}
+          onEdit={handleExpectedExpenseEdit}
+          onDelete={handleExpectedExpenseDelete}
+          onActivate={handleExpectedExpenseActivate}
+          loading={expectedState.loading}
+          emptyMessage="예상 지출이 없습니다"
+        />
+      </TabPanel>
+
 
       {/* 지출 추가 다이얼로그 */}
       <Dialog
@@ -210,6 +442,44 @@ const Expenses: React.FC = () => {
               showNotification('지출이 추가되었습니다.', 'success');
             }}
             onCancel={() => setIsFormOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* 예상 지출 등록/수정 다이얼로그 */}
+      <Dialog
+        open={isExpectedFormOpen}
+        onClose={handleCloseExpectedForm}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={false}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {editingExpectedExpense ? '예상 지출 수정' : '예상 지출 등록'}
+          <IconButton
+            onClick={handleCloseExpectedForm}
+            size="small"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        
+        <DialogContent>
+          <ExpectedExpenseForm
+            initialData={editingExpectedExpense ? {
+              description: editingExpectedExpense.description,
+              amount: editingExpectedExpense.amount,
+              category: editingExpectedExpense.category,
+              subcategory: editingExpectedExpense.subcategory,
+              expectedDate: editingExpectedExpense.expectedDate,
+              isRecurring: editingExpectedExpense.isRecurring,
+              tags: editingExpectedExpense.tags,
+              paymentMethod: editingExpectedExpense.paymentMethod
+            } : undefined}
+            onSubmit={editingExpectedExpense ? handleExpectedExpenseUpdate : handleExpectedExpenseAdd}
+            onCancel={handleCloseExpectedForm}
+            loading={expectedState.loading}
+            error={expectedState.error}
           />
         </DialogContent>
       </Dialog>

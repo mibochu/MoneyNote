@@ -193,9 +193,9 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
     <Box>
       {/* 헤더 영역 */}
       {showHeader && (
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
               지출 목록
             </Typography>
             
@@ -228,21 +228,26 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
           </Box>
 
           {/* 통계 정보 */}
-          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
             <Chip
               label={`총 ${stats.count}건`}
               color="primary"
               variant="outlined"
+              size="medium"
+              sx={{ fontSize: '0.875rem', height: 36 }}
             />
             <Chip
               label={`₩${stats.total.toLocaleString()}`}
               color="secondary"
               variant="outlined"
+              size="medium"
+              sx={{ fontSize: '0.875rem', height: 36 }}
             />
             <Chip
               label={`고정비 ₩${stats.fixedTotal.toLocaleString()}`}
               color="error"
-              size="small"
+              size="medium"
+              sx={{ fontSize: '0.875rem', height: 36 }}
             />
             <Chip
               label={`변동비 ₩${stats.variableTotal.toLocaleString()}`}
@@ -409,14 +414,14 @@ const ExpenseList: React.FC<ExpenseListProps> = ({
 
       {/* 지출 목록 */}
       {paginatedExpenses.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary" variant="h6">
-            {emptyMessage}
+        <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 2, minHeight: 200, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <Typography color="text.secondary" variant="h5" sx={{ mb: 2 }}>
+            📋 {emptyMessage}
           </Typography>
-          <Typography color="text.secondary" variant="body2" sx={{ mt: 1 }}>
+          <Typography color="text.secondary" variant="body1" sx={{ mt: 1 }}>
             {filter && Object.keys(filter).length > 0 
-              ? '필터 조건에 맞는 지출이 없습니다.' 
-              : '지출을 추가해보세요.'
+              ? '필터 조건을 조정하거나 새로운 지출을 추가해보세요.' 
+              : '지출 추가 버튼을 눌러 첫 번째 지출을 기록해보세요!'
             }
           </Typography>
         </Paper>

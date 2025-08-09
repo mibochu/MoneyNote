@@ -3,6 +3,7 @@
 import React, { createContext, useReducer, useEffect } from 'react';
 import type { Income, IncomeFormData, IncomeFilter } from '../types/income.types';
 import { LocalStorage } from '../utils/storage/localStorage';
+import { autoBackupManager } from '../utils/storage/autoBackup';
 
 // State 타입 정의
 interface IncomeState {
@@ -74,7 +75,7 @@ const incomeReducer = (state: IncomeState, action: IncomeAction): IncomeState =>
       }
       return { ...state, incomes: [...state.incomes, action.payload], error: null };
     
-    case 'UPDATE_INCOME':
+    case 'UPDATE_INCOME': {
       const incomeExists = state.incomes.some(income => income.id === action.payload.id);
       if (!incomeExists) {
         console.warn('Cannot update income: ID not found:', action.payload.id);
@@ -87,22 +88,25 @@ const incomeReducer = (state: IncomeState, action: IncomeAction): IncomeState =>
         ),
         error: null
       };
+    }
     
-    case 'DELETE_INCOME':
+    case 'DELETE_INCOME': {
       const incomesToDelete = state.incomes.filter(income => income.id !== action.payload);
       if (incomesToDelete.length === state.incomes.length) {
         console.warn('Cannot delete income: ID not found:', action.payload);
         return state;
       }
       return { ...state, incomes: incomesToDelete, error: null };
+    }
     
     case 'SET_FILTER':
       return { ...state, filter: action.payload };
     
-    default:
+    default: {
       const exhaustiveCheck: never = action;
       console.error('Unhandled action type:', exhaustiveCheck);
       return state;
+    }
   }
 };
 
@@ -156,12 +160,31 @@ export const IncomeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  // 수입 데이터 변경 시 localStorage에 저장
+  // 수입 데이터 변경 시 localStorage에 저장 및 백업
   useEffect(() => {
     if (state.loading) return;
     
     try {
       LocalStorage.set('INCOMES', state.incomes);
+      
+      // 데이터 변경 시 즉시 백업 (debounce 적용)
+      if (state.incomes.length > 0) {
+        const timeoutId = setTimeout(async () => {
+          try {
+            console.log('💰 수입 데이터 변경됨 - 백업 생성 중...');
+            const success = await autoBackupManager.createAutoBackup();
+            if (success) {
+              console.log('✅ 수입 데이터 백업 완료');
+            } else {
+              console.log('❌ 수입 데이터 백업 실패');
+            }
+          } catch (error) {
+            console.warn('⚠️ 수입 데이터 백업 오류:', error);
+          }
+        }, 3000); // 3초 후 백업
+        
+        return () => clearTimeout(timeoutId);
+      }
     } catch (error) {
       console.error('Failed to save incomes to localStorage:', error);
     }

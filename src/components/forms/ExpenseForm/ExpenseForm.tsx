@@ -9,9 +9,23 @@ import {
   Chip,
   Stack,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  FormLabel,
+  Checkbox
 } from '@mui/material';
-import { Save as SaveIcon } from '@mui/icons-material';
+import { 
+  Save as SaveIcon, 
+  BookmarkAdd as TemplateIcon,
+  BookmarkBorder as LoadTemplateIcon
+} from '@mui/icons-material';
 
 import { CurrencyInput, DateInput } from '../../ui/Input';
 import { CategorySelect } from '../../ui/Select';
@@ -21,6 +35,7 @@ import { Input } from '../../ui/Input';
 import type { ExpenseFormData, PaymentMethod } from '../../../types/expense.types';
 import { PAYMENT_METHOD_OPTIONS, DEFAULT_PAYMENT_METHOD } from '../../../utils/constants/paymentMethods';
 import { validateExpenseForm, validateField } from '../../../utils/validators/expenseValidators';
+import { useTemplates } from '../../../context/TemplateContext';
 
 export interface ExpenseFormProps {
   initialData?: Partial<ExpenseFormData>;
@@ -48,6 +63,8 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   isLoading = false,
   categories = []
 }) => {
+  const { state: templateState, addExpenseTemplate, deleteExpenseTemplate } = useTemplates();
+  
   // 폼 상태 관리 (2025 React 패턴: 지연 초기화)
   const [formData, setFormData] = useState<ExpenseFormData>(() => {
     const defaultDate = new Date();
@@ -70,6 +87,13 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   // 태그 입력 상태
   const [tagInput, setTagInput] = useState('');
+
+  // 템플릿 관련 상태
+  const [templateMenuAnchor, setTemplateMenuAnchor] = useState<null | HTMLElement>(null);
+  const [loadTemplateMenuAnchor, setLoadTemplateMenuAnchor] = useState<null | HTMLElement>(null);
+  const [saveTemplateDialog, setSaveTemplateDialog] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [saveAmount, setSaveAmount] = useState(false);
 
   // 폼 유효성 검증
   const validateForm = (): boolean => {
@@ -204,6 +228,38 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
     }));
   };
 
+  // 템플릿 관련 핸들러
+  const handleSaveTemplate = () => {
+    if (templateName.trim()) {
+      addExpenseTemplate(templateName.trim(), formData, saveAmount);
+      setSaveTemplateDialog(false);
+      setTemplateName('');
+      setSaveAmount(false);
+    }
+  };
+
+  const handleLoadTemplate = (templateId: string) => {
+    const template = templateState.expenseTemplates.find(t => t.id === templateId);
+    if (template) {
+      setFormData(prev => ({
+        ...prev,
+        description: template.description,
+        amount: template.amount || prev.amount,
+        category: template.category,
+        subcategory: template.subcategory || '',
+        paymentMethod: template.paymentMethod as PaymentMethod,
+        tags: [...template.tags],
+        isFixed: template.isFixed
+      }));
+      setErrors({}); // 에러 초기화
+    }
+    setLoadTemplateMenuAnchor(null);
+  };
+
+  const handleDeleteTemplate = (templateId: string) => {
+    deleteExpenseTemplate(templateId);
+  };
+
   // 폼 제출
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -229,9 +285,33 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
   return (
     <Card>
       <CardContent>
-        <Typography variant="h6" gutterBottom>
-          {initialData ? '지출 수정' : '지출 입력'}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">
+            {initialData ? '지출 수정' : '지출 입력'}
+          </Typography>
+          
+          {/* 템플릿 버튼들 */}
+          <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<LoadTemplateIcon />}
+              onClick={(e) => setLoadTemplateMenuAnchor(e.currentTarget)}
+              disabled={templateState.expenseTemplates.length === 0}
+            >
+              불러오기
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<TemplateIcon />}
+              onClick={(e) => setTemplateMenuAnchor(e.currentTarget)}
+              disabled={!formData.description || !formData.category}
+            >
+              저장
+            </Button>
+          </Stack>
+        </Box>
 
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
           <Stack spacing={3}>
@@ -445,6 +525,102 @@ const ExpenseForm: React.FC<ExpenseFormProps> = ({
             </Stack>
           </Stack>
         </Box>
+        
+        {/* 템플릿 저장 메뉴 */}
+        <Menu
+          anchorEl={templateMenuAnchor}
+          open={Boolean(templateMenuAnchor)}
+          onClose={() => setTemplateMenuAnchor(null)}
+        >
+          <MenuItem onClick={() => {
+            setSaveTemplateDialog(true);
+            setTemplateMenuAnchor(null);
+          }}>
+            <TemplateIcon sx={{ mr: 1 }} />
+            템플릿으로 저장
+          </MenuItem>
+        </Menu>
+
+        {/* 템플릿 불러오기 메뉴 */}
+        <Menu
+          anchorEl={loadTemplateMenuAnchor}
+          open={Boolean(loadTemplateMenuAnchor)}
+          onClose={() => setLoadTemplateMenuAnchor(null)}
+          PaperProps={{
+            style: {
+              maxHeight: 300,
+              width: '280px'
+            }
+          }}
+        >
+          {templateState.expenseTemplates.map((template) => (
+            <MenuItem key={template.id}>
+              <Box sx={{ width: '100%' }}>
+                <Box 
+                  sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                  onClick={() => handleLoadTemplate(template.id)}
+                >
+                  <Box>
+                    <Typography variant="body2" fontWeight="medium">
+                      {template.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {template.description} • {template.amount ? `${template.amount.toLocaleString()}원` : '금액 없음'}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button 
+                    size="small" 
+                    color="error" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTemplate(template.id);
+                    }}
+                  >
+                    삭제
+                  </Button>
+                </Box>
+              </Box>
+            </MenuItem>
+          ))}
+        </Menu>
+
+        {/* 템플릿 저장 다이얼로그 */}
+        <Dialog open={saveTemplateDialog} onClose={() => setSaveTemplateDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>템플릿 저장</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="템플릿 이름"
+              fullWidth
+              variant="outlined"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="예: 일일 교통비, 점심식사"
+              sx={{ mb: 2 }}
+            />
+            <FormControl component="fieldset">
+              <FormLabel component="legend">저장 옵션</FormLabel>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={saveAmount}
+                    onChange={(e) => setSaveAmount(e.target.checked)}
+                  />
+                }
+                label={`금액도 저장 (${formData.amount.toLocaleString()}원)`}
+              />
+            </FormControl>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setSaveTemplateDialog(false)}>취소</Button>
+            <Button onClick={handleSaveTemplate} variant="contained" disabled={!templateName.trim()}>
+              저장
+            </Button>
+          </DialogActions>
+        </Dialog>
       </CardContent>
     </Card>
   );

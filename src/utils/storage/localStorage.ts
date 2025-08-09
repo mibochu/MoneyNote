@@ -2,12 +2,17 @@
 
 const STORAGE_KEYS = {
   EXPENSES: 'moneyNote_expenses',
+  EXPECTED_EXPENSES: 'moneyNote_expectedExpenses',
+  EXPENSE_TEMPLATES: 'moneyNote_expenseTemplates',
   INCOMES: 'moneyNote_incomes',
+  INCOME_TEMPLATES: 'moneyNote_incomeTemplates',
   CATEGORIES: 'moneyNote_categories',
   BUDGETS: 'moneyNote_budgets',
   SETTINGS: 'moneyNote_settings',
   TAGS: 'moneyNote_tags',
-  MONTHLY_TARGETS: 'moneyNote_monthlyTargets'
+  MONTHLY_TARGETS: 'moneyNote_monthlyTargets',
+  RECURRING_TRANSACTIONS: 'moneyNote_recurringTransactions',
+  APP_SETTINGS: 'moneyNote_appSettings'
 } as const;
 
 export class LocalStorage {
