@@ -35,6 +35,9 @@ MoneyNote는 **실무 수준 가계부 관리 앱**으로, 총 **6개 페이지*
 - 불변성과 복잡한 데이터 업데이트
 - TypeScript 고급 타입 시스템
 - 커스텀 훅과 로직 분리
+- IndexedDB 자동 백업 시스템
+- 실시간 유효성 검증 패턴
+- Feature-based 아키텍처 설계
 
 ---
 
@@ -950,7 +953,304 @@ const expenseReducer = (state: ExpenseState, action: ExpenseAction): ExpenseStat
 
 ---
 
-## 📖 단원 8: 커스텀 훅과 로직 분리 (⚡ 고급)
+## 📖 단원 8: Data Persistence 고급 패턴 (⚡ 고급)
+
+### 8.1 IndexedDB 자동 백업 시스템
+
+**🤔 이게 뭐예요?**
+- **IndexedDB**: 브라우저의 로컬 데이터베이스 (localStorage보다 강력)
+- **자동 백업**: 데이터 변경을 감지해서 자동으로 백업 생성
+- **복구 시스템**: 백업에서 데이터를 안전하게 복원
+
+**🏦 비유로 설명**
+은행의 자동 백업 시스템이라고 생각해보세요:
+- **IndexedDB**: 본점 금고 (안전하고 큼)
+- **localStorage**: 지점 금고 (빠르지만 제한적)
+- **자동 백업**: 매일 밤 본점으로 데이터 복사
+
+**MoneyNote의 실제 백업 시스템**:
+```typescript
+// utils/storage/autoBackupManager.ts - 실제 구현된 시스템
+class AutoBackupManager {
+  private static instance: AutoBackupManager;
+  private db: IDBDatabase | null = null;
+  private backupInterval: number = 24 * 60 * 60 * 1000; // 24시간
+
+  // 싱글톤 패턴으로 인스턴스 관리
+  static getInstance(): AutoBackupManager {
+    if (!AutoBackupManager.instance) {
+      AutoBackupManager.instance = new AutoBackupManager();
+    }
+    return AutoBackupManager.instance;
+  }
+
+  async initialize(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('MoneyNoteBackup', 1);
+      
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        this.db = request.result;
+        this.scheduleAutoBackup(); // 자동 백업 스케줄링
+        resolve();
+      };
+      
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        
+        // 백업 저장소 생성
+        if (!db.objectStoreNames.contains('backups')) {
+          const store = db.createObjectStore('backups', { keyPath: 'timestamp' });
+          store.createIndex('date', 'date', { unique: false });
+        }
+      };
+    });
+  }
+
+  // 데이터 변경 감지 후 백업 생성
+  async createBackup(data: BackupData): Promise<void> {
+    if (!this.db) return;
+    
+    try {
+      const transaction = this.db.transaction(['backups'], 'readwrite');
+      const store = transaction.objectStore('backups');
+      
+      const backup: BackupEntry = {
+        timestamp: Date.now(),
+        date: new Date().toISOString(),
+        data: {
+          expenses: data.expenses,
+          categories: data.categories,
+          budgets: data.budgets,
+          settings: data.settings
+        },
+        version: '1.0.0'
+      };
+      
+      await store.add(backup);
+      console.log('백업 생성 완료:', backup.timestamp);
+      
+      // 오래된 백업 정리 (30개 초과시 삭제)
+      await this.cleanupOldBackups();
+    } catch (error) {
+      console.error('백업 생성 실패:', error);
+    }
+  }
+
+  // 백업에서 데이터 복원
+  async restoreFromBackup(timestamp: number): Promise<BackupData | null> {
+    if (!this.db) return null;
+    
+    try {
+      const transaction = this.db.transaction(['backups'], 'readonly');
+      const store = transaction.objectStore('backups');
+      const request = store.get(timestamp);
+      
+      return new Promise((resolve, reject) => {
+        request.onsuccess = () => {
+          if (request.result) {
+            resolve(request.result.data);
+          } else {
+            resolve(null);
+          }
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('백업 복원 실패:', error);
+      return null;
+    }
+  }
+}
+
+// Context에서 자동 백업 연동
+const ExpenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [state, dispatch] = useReducer(expenseReducer, initialExpenseState);
+  const backupManager = useRef(AutoBackupManager.getInstance());
+
+  // 데이터 변경시 자동 백업
+  useEffect(() => {
+    if (state.loading) return; // 초기 로드 중에는 백업하지 않음
+    
+    const backupData = {
+      expenses: state.expenses,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    // 디바운스를 적용한 백업 (1초 지연)
+    const timeoutId = setTimeout(() => {
+      backupManager.current.createBackup(backupData);
+    }, 1000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [state.expenses, state.loading]);
+};
+```
+
+### 8.2 Date 객체 직렬화/역직렬화 패턴
+
+**실제 구현된 안전한 날짜 처리**:
+```typescript
+// utils/dateUtils.ts - 날짜 안전 처리
+export const serializeDate = (date: Date): string => {
+  return date.toISOString();
+};
+
+export const deserializeDate = (dateString: string): Date => {
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date string: ${dateString}`);
+  }
+  return date;
+};
+
+// Context에서 활용
+const loadExpenses = async () => {
+  try {
+    const savedExpenses = LocalStorage.get<SerializedExpense[]>('EXPENSES', []);
+    
+    // Date 객체로 안전하게 변환
+    const expenses = savedExpenses.map((expense) => ({
+      ...expense,
+      date: deserializeDate(expense.date),
+      createdAt: deserializeDate(expense.createdAt),
+      updatedAt: deserializeDate(expense.updatedAt)
+    }));
+    
+    dispatch({ type: 'SET_EXPENSES', payload: expenses });
+  } catch (error) {
+    console.error('데이터 로드 실패:', error);
+    dispatch({ type: 'SET_ERROR', payload: '데이터를 불러오는데 실패했습니다.' });
+  }
+};
+```
+
+---
+
+## 📖 단원 9: 실시간 유효성 검증 시스템 (⚡ 고급)
+
+### 9.1 다층 검증 아키텍처
+
+**MoneyNote의 실제 검증 시스템**:
+```typescript
+// utils/validators/validationEngine.ts - 검증 엔진
+export class ValidationEngine {
+  private rules: ValidationRule[] = [];
+  
+  addRule(rule: ValidationRule): void {
+    this.rules.push(rule);
+  }
+  
+  validate(fieldName: string, value: any, context?: any): ValidationResult {
+    const applicableRules = this.rules.filter(rule => 
+      rule.field === fieldName || rule.field === '*'
+    );
+    
+    const errors: string[] = [];
+    
+    for (const rule of applicableRules) {
+      const result = rule.validator(value, context);
+      if (!result.isValid) {
+        errors.push(result.message);
+      }
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+}
+
+// 비즈니스 규칙 정의
+const expenseValidationEngine = new ValidationEngine();
+
+// 금액 검증 규칙들
+expenseValidationEngine.addRule({
+  field: 'amount',
+  validator: (value) => ({
+    isValid: value > 0,
+    message: '금액은 0보다 커야 합니다'
+  })
+});
+
+expenseValidationEngine.addRule({
+  field: 'amount',
+  validator: (value) => ({
+    isValid: value <= 10000000,
+    message: '금액은 1000만원을 초과할 수 없습니다'
+  })
+});
+
+// 카테고리 의존성 검증
+expenseValidationEngine.addRule({
+  field: 'subcategory',
+  validator: (value, context) => {
+    if (!value) return { isValid: true }; // 선택사항이면 OK
+    
+    const category = context?.category;
+    const validSubcategories = CATEGORY_MAP[category]?.subcategories || [];
+    
+    return {
+      isValid: validSubcategories.includes(value),
+      message: '선택한 카테고리에 해당하는 소분류를 선택해주세요'
+    };
+  }
+});
+```
+
+### 9.2 실시간 검증 React 통합
+
+```typescript
+// hooks/useFormValidation.ts - 폼 검증 훅
+export const useFormValidation = <T extends Record<string, any>>(
+  initialValues: T,
+  validationEngine: ValidationEngine
+) => {
+  const [values, setValues] = useState<T>(initialValues);
+  const [errors, setErrors] = useState<Partial<Record<keyof T, string[]>>>({});
+  const [touched, setTouched] = useState<Partial<Record<keyof T, boolean>>>({});
+  
+  // 실시간 검증 (디바운스 적용)
+  const validateField = useCallback(
+    debounce((fieldName: keyof T, value: any) => {
+      const result = validationEngine.validate(fieldName as string, value, values);
+      
+      setErrors(prev => ({
+        ...prev,
+        [fieldName]: result.isValid ? [] : result.errors
+      }));
+    }, 300), // 300ms 디바운스
+    [validationEngine, values]
+  );
+  
+  const handleChange = useCallback(<K extends keyof T>(field: K) => 
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = event.target.type === 'checkbox' 
+        ? event.target.checked 
+        : event.target.value;
+      
+      setValues(prev => ({ ...prev, [field]: newValue }));
+      
+      // 이미 터치된 필드는 실시간 검증
+      if (touched[field]) {
+        validateField(field, newValue);
+      }
+    }, [validateField, touched]);
+  
+  return {
+    values,
+    errors,
+    touched,
+    handleChange,
+    // ... 기타 유틸리티 함수들
+  };
+};
+```
+
+---
+
+## 📖 단원 10: 커스텀 훅과 로직 분리 (⚡ 고급)
 
 ### 8.1 실무에서 사용하는 커스텀 훅 패턴
 
@@ -1114,6 +1414,305 @@ function ExpenseForm({ onSubmit }: { onSubmit: (data: ExpenseFormData) => void }
     </form>
   );
 }
+```
+
+---
+
+## 📖 단원 11: Feature-based 아키텍처 설계 (⚡ 고급)
+
+### 11.1 MoneyNote의 실제 폴더 구조
+
+**🤔 이게 뭐예요?**
+- **Feature-based**: 기능별로 폴더를 나누는 방식
+- **Domain-driven**: 비즈니스 도메인 중심의 구조
+- **Barrel Export**: index.ts로 깔끔한 import 경로
+
+**🏗️ 비유로 설명**
+대형 백화점의 매장 배치라고 생각해보세요:
+- **features/**: 각 층 (1층: 화장품, 2층: 의류, 3층: 가전)
+- **components/**: 각 매장 (매장마다 독립적 운영)
+- **hooks/**: 공통 서비스 (안내데스크, 고객센터)
+
+**MoneyNote의 실제 구조**:
+```typescript
+src/
+├── features/                    # 기능별 모듈화
+│   ├── expenses/               # 지출 관리 도메인
+│   │   ├── components/         # 지출 전용 컴포넌트
+│   │   │   ├── ExpenseForm.tsx
+│   │   │   ├── ExpenseList.tsx
+│   │   │   └── ExpenseItem.tsx
+│   │   ├── hooks/              # 지출 관련 커스텀 훅
+│   │   │   ├── useExpenses.ts
+│   │   │   └── useExpenseForm.ts
+│   │   ├── context/            # 지출 Context
+│   │   │   └── ExpenseProvider.tsx
+│   │   └── index.ts            # Barrel Export
+│   │
+│   ├── categories/             # 카테고리 관리 도메인
+│   │   ├── components/
+│   │   ├── hooks/
+│   │   ├── context/
+│   │   └── index.ts
+│   │
+│   └── dashboard/              # 대시보드 도메인
+│       ├── components/
+│       ├── hooks/
+│       └── index.ts
+│
+├── components/                  # 공통 컴포넌트
+│   ├── common/                 # 레이아웃, 네비게이션
+│   ├── forms/                  # 범용 폼 컴포넌트
+│   └── ui/                     # 기본 UI 요소
+│
+├── hooks/                      # 전역 커스텀 훅
+├── utils/                      # 유틸리티 함수
+├── types/                      # 타입 정의 (중앙집중)
+└── context/                    # 전역 Context
+```
+
+### 11.2 Barrel Export 패턴
+
+**실제 구현된 깔끔한 import 시스템**:
+```typescript
+// features/expenses/index.ts - Barrel Export
+export { ExpenseForm } from './components/ExpenseForm';
+export { ExpenseList } from './components/ExpenseList';
+export { ExpenseItem } from './components/ExpenseItem';
+export { useExpenses } from './hooks/useExpenses';
+export { useExpenseForm } from './hooks/useExpenseForm';
+export { ExpenseProvider } from './context/ExpenseProvider';
+
+// 다른 파일에서 사용할 때
+import { 
+  ExpenseForm, 
+  ExpenseList, 
+  useExpenses 
+} from '../features/expenses';
+
+// 기존 복잡한 import 경로
+import { ExpenseForm } from '../features/expenses/components/ExpenseForm';
+import { ExpenseList } from '../features/expenses/components/ExpenseList';
+import { useExpenses } from '../features/expenses/hooks/useExpenses';
+```
+
+### 11.3 Cross-Feature 의존성 관리
+
+**🚨 주의할 점**: Feature 간 직접 의존성은 피하기
+```typescript
+// ❌ 잘못된 패턴 - features 간 직접 의존
+import { CategoryContext } from '../features/categories/context/CategoryProvider';
+
+// ✅ 올바른 패턴 - 상위 레벨에서 조합
+// App.tsx에서 Provider 조합
+<CategoryProvider>
+  <ExpenseProvider>
+    {/* ExpenseProvider 내부에서 CategoryContext 접근 */}
+  </ExpenseProvider>
+</CategoryProvider>
+```
+
+---
+
+## 📖 단원 12: Chart.js React 통합 패턴 (🔥 중급)
+
+### 12.1 MoneyNote 차트 시스템
+
+**실제 구현된 차트 컴포넌트들**:
+```typescript
+// components/charts/ExpenseChart.tsx
+import { Doughnut, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+// Chart.js 플러그인 등록 (필수!)
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const ExpenseDoughnutChart: React.FC<{ expenses: Expense[] }> = ({ expenses }) => {
+  // 카테고리별 지출 합계 계산
+  const chartData = useMemo(() => {
+    const categoryTotals = expenses.reduce((acc, expense) => {
+      acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      labels: Object.keys(categoryTotals),
+      datasets: [{
+        data: Object.values(categoryTotals),
+        backgroundColor: [
+          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+          '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+        ],
+        borderWidth: 2,
+      }]
+    };
+  }, [expenses]);
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: { position: 'right' as const },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const value = context.parsed;
+            const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${context.label}: ₩${value.toLocaleString()} (${percentage}%)`;
+          }
+        }
+      }
+    }
+  };
+
+  return <Doughnut data={chartData} options={options} />;
+};
+```
+
+### 12.2 반응형 차트 시스템
+
+```typescript
+// 모바일/데스크톱 대응 차트
+const ResponsiveChart = ({ data, type = 'doughnut' }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  const chartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: isMobile ? 'bottom' : 'right' as const,
+        align: 'start' as const,
+      },
+      tooltip: {
+        enabled: true,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+      }
+    }
+  }), [isMobile]);
+  
+  return (
+    <Box sx={{ 
+      height: { xs: 300, md: 400 },
+      position: 'relative' 
+    }}>
+      {type === 'doughnut' ? (
+        <Doughnut data={data} options={chartOptions} />
+      ) : (
+        <Bar data={data} options={chartOptions} />
+      )}
+    </Box>
+  );
+};
+```
+
+---
+
+## 📖 단원 13: 반응형 UI/UX 고급 패턴 (🔥 중급)
+
+### 13.1 Mobile-First 반응형 설계
+
+**MoneyNote의 실제 반응형 전략**:
+```typescript
+// hooks/useResponsive.ts - 반응형 유틸리티 훅
+export const useResponsive = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  
+  // 기기별 최적화된 설정 반환
+  return {
+    isMobile,
+    isTablet, 
+    isDesktop,
+    
+    // 차트 설정
+    chartHeight: isMobile ? 250 : 350,
+    chartLegendPosition: isMobile ? 'bottom' : 'right',
+    
+    // 모달 설정
+    modalFullScreen: isMobile,
+    modalMaxWidth: isMobile ? false : 'md',
+    
+    // 그리드 설정
+    cardsPerRow: isMobile ? 1 : isTablet ? 2 : 3,
+    cardSpacing: isMobile ? 2 : 3,
+  };
+};
+
+// 컴포넌트에서 활용
+const Dashboard = () => {
+  const { isMobile, cardsPerRow, cardSpacing } = useResponsive();
+  
+  return (
+    <Stack spacing={cardSpacing}>
+      <Stack 
+        direction={isMobile ? 'column' : 'row'} 
+        spacing={2}
+      >
+        {statsCards.map((card, index) => (
+          <Box 
+            key={index}
+            sx={{ flex: `1 1 ${100/cardsPerRow}%` }}
+          >
+            <StatsCard {...card} />
+          </Box>
+        ))}
+      </Stack>
+    </Stack>
+  );
+};
+```
+
+### 13.2 접근성(A11y) 패턴
+
+```typescript
+// 실제 구현된 접근성 개선
+const ExpenseForm = () => {
+  const [amount, setAmount] = useState('');
+  const [amountError, setAmountError] = useState('');
+  
+  return (
+    <TextField
+      label="지출 금액"
+      value={amount}
+      onChange={handleAmountChange}
+      error={!!amountError}
+      helperText={amountError}
+      
+      // 접근성 속성들
+      required
+      aria-describedby={amountError ? 'amount-error' : undefined}
+      aria-invalid={!!amountError}
+      inputProps={{
+        'aria-label': '지출 금액 입력',
+        min: 0,
+        max: 10000000,
+      }}
+    />
+  );
+};
 ```
 
 ---
